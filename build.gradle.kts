@@ -39,6 +39,7 @@ dependencies {
 	implementation("org.hibernate.orm:hibernate-community-dialects")
 	// flyway-core 12.x bundles SQLite support; there is no separate flyway-database-sqlite module.
 	implementation("org.flywaydb:flyway-core")
+	implementation("org.springframework.boot:spring-boot-flyway")
 	implementation("org.yaml:snakeyaml")
 }
 
