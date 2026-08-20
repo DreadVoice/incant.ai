@@ -110,7 +110,7 @@ Incant makes no network calls except to the provider you configured. There is no
 
 | Milestone | What it means | Status |
 |---|---|---|
-| `v0.1` | Skills parsed and classified | 🔴 Not started |
+| `v0.1` | Skills parsed and classified | ✅ Done |
 | `v0.2` | Agent loop, one provider | 🔴 Not started |
 | `v0.3` | Multi-provider | 🔴 Not started |
 | `v1.0` | Chat UI, runnable JAR | 🔴 Not started |
