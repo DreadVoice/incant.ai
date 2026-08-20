@@ -94,11 +94,9 @@ Drop skill folders into `~/.incant/skills/`. Each one needs a `SKILL.md` with `n
 
 ## Security
 
-Being direct about this, because a tool that runs LLM-generated code deserves it.
-
 **What's protected:** document skills run in a container with no network egress, capped memory and CPU, and a read-only root filesystem. On Linux with gVisor installed, they additionally run under a userspace kernel that filters syscalls before they reach the host. Incant detects this at startup and uses it when available.
 
-**What isn't:** workspace mode runs on your machine with your permissions. That's the point of it — coding-agent skills need real repo access to be useful. Incant shows you every command before and after it runs, but it does not sandbox them. Treat installing a skill the way you'd treat installing any dependency: know where it came from.
+**What isn't:** *NOT IMPLEMENTED YET* workspace mode runs on your machine with your permissions. Coding-agent skills need real repo access to be useful. Incant shows you every command before and after it runs, but it does not sandbox them. Treat installing a skill the way you'd treat installing any dependency: know where it came from.
 
 **On API keys:** they're stored in `~/.incant/config.yml` in plaintext, protected by nothing but your filesystem permissions. This is the same posture as most local dev tools. If that's not acceptable for your keys, use scoped or throwaway ones.
 
@@ -127,7 +125,7 @@ Incant makes no network calls except to the provider you configured. There is no
 
 ## Contributing
 
-Not open to contributions yet, the architecture is still moving. Issues and ideas are welcome once `v0.1` is tagged.
+Not open to contributions yet, the architecture is still moving. Issues and ideas are welcome once `v0.3` is tagged.
 
 ## License
 
