@@ -30,12 +30,12 @@ public class ChatController {
     public ChatReply chat(@Valid @RequestBody ChatMessage request) {
         String systemPrompt = promptBuilder.build(BASE_PROMPT, false, false);
         AgentOrchestrator.Result result = orchestrator.run(systemPrompt, request.message());
-        return new ChatReply(result.text(), result.iterations());
+        return new ChatReply(result.text(), result.telemetry());
     }
 
     public record ChatMessage(@NotBlank String message) {
     }
 
-    public record ChatReply(String reply, int iterations) {
+    public record ChatReply(String reply, AgentOrchestrator.Telemetry telemetry) {
     }
 }
