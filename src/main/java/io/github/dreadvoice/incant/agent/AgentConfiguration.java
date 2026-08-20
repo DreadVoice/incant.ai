@@ -38,8 +38,9 @@ public class AgentConfiguration {
     @Lazy
     public ChatModel chatModel(@Value("${incant.provider}") String provider,
             @Value("${incant.api-key}") String apiKey,
-            @Value("${incant.model}") String modelName) {
-        return ProviderFactory.create(provider, apiKey, modelName);
+            @Value("${incant.model}") String modelName,
+            @Value("${incant.base-url}") String baseUrl) {
+        return ProviderFactory.create(provider, apiKey, modelName, baseUrl);
     }
 
     @Bean

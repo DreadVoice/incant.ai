@@ -35,6 +35,7 @@ dependencies {
 	implementation(platform("dev.langchain4j:langchain4j-bom:1.18.0"))
 	implementation("dev.langchain4j:langchain4j")
 	implementation("dev.langchain4j:langchain4j-anthropic")
+	implementation("dev.langchain4j:langchain4j-open-ai")
 	runtimeOnly("org.xerial:sqlite-jdbc:3.42.0.0")
 	implementation("org.hibernate.orm:hibernate-community-dialects")
 	// flyway-core 12.x bundles SQLite support; there is no separate flyway-database-sqlite module.
