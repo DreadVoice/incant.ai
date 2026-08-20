@@ -5,14 +5,17 @@ import java.util.Set;
 
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 
 public final class ProviderFactory {
 
     public static final String ANTHROPIC = "anthropic";
     public static final String OPENAI = "openai";
+    public static final String OLLAMA = "ollama";
+    public static final String DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
 
-    private static final Set<String> SUPPORTED = Set.of(ANTHROPIC, OPENAI);
+    private static final Set<String> SUPPORTED = Set.of(ANTHROPIC, OPENAI, OLLAMA);
 
     private ProviderFactory() {
     }
@@ -31,12 +34,12 @@ public final class ProviderFactory {
 
     public static ChatModel create(String provider, String apiKey, String modelName, String baseUrl) {
         String name = normalize(require(provider, "provider"));
-        String key = require(apiKey, "apiKey");
         String model = require(modelName, "modelName");
 
         return switch (name) {
-            case ANTHROPIC -> anthropic(key, model, baseUrl);
-            case OPENAI -> openAi(key, model, baseUrl);
+            case ANTHROPIC -> anthropic(require(apiKey, "apiKey"), model, baseUrl);
+            case OPENAI -> openAi(require(apiKey, "apiKey"), model, baseUrl);
+            case OLLAMA -> ollama(model, baseUrl);
             default -> throw new IllegalArgumentException(
                     "unknown provider '" + provider + "', supported: " + SUPPORTED);
         };
@@ -60,6 +63,13 @@ public final class ProviderFactory {
             builder.baseUrl(baseUrl.strip());
         }
         return builder.build();
+    }
+
+    private static ChatModel ollama(String modelName, String baseUrl) {
+        return OllamaChatModel.builder()
+                .baseUrl(hasText(baseUrl) ? baseUrl.strip() : DEFAULT_OLLAMA_BASE_URL)
+                .modelName(modelName)
+                .build();
     }
 
     private static String normalize(String value) {
