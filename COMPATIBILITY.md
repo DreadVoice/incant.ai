@@ -1,6 +1,6 @@
 # Compatibility
 
-What actually runs, what doesn't, and what each provider does differently. Everything here was measured against the code in this repo — where something is untested, it says so rather than guessing.
+What actually runs, what doesn't, and what each provider does differently. Everything here was measured against the code in this repo, where something is untested, it says so rather than guessing.
 
 Last updated: 2026-08-21, against Incant at `v0.2` (agent loop + three providers).
 
@@ -13,8 +13,8 @@ Incant sorts every skill into one of three classes on load and tells you which o
 | Class | What it needs | Offered to the model when | Status |
 |---|---|---|---|
 | `INSTRUCTION` | Nothing but context | Always | ✅ Works today |
-| `DOCUMENT` | A sandbox that can run scripts | `sandboxAvailable` is true | ⛔ Never — no sandbox exists yet |
-| `CODING_AGENT` | A workspace with repo access | `workspaceActive` is true | ⛔ Never — no workspace mode yet |
+| `DOCUMENT` | A sandbox that can run scripts | `sandboxAvailable` is true | ⛔ Never - no sandbox implemented yet |
+| `CODING_AGENT` | A workspace with repo access | `workspaceActive` is true | ⛔ Never - no workspace implemented yet |
 
 Both flags are currently hardcoded to `false` at the one place that builds a system prompt (`ChatController`), so **only instruction skills reach the model today**. Document and coding-agent skills are still parsed, classified, and listed by the loader — they are simply withheld from the prompt, which is the honest failure mode: the model never sees a skill it cannot run.
 
@@ -25,7 +25,7 @@ Both flags are currently hardcoded to `false` at the one place that builds a sys
 1. **Coding-agent markers**
    - `allowed-tools` in the frontmatter names any of `edit`, `multiedit`, `write`, `task`, `git` (case-insensitive), **or**
    - the skill folder contains an `agents/`, `commands/`, or `hooks/` directory.
-2. **Scripts** — any regular file under the skill root (walked 4 levels deep) with extension `.py`, `.sh`, `.js`, `.ts`, `.rb`, or `.ps1`.
+2. **Scripts**: any regular file under the skill root (walked 4 levels deep) with extension `.py`, `.sh`, `.js`, `.ts`, `.rb`, or `.ps1`.
 3. Otherwise **instruction**.
 
 Consequences worth knowing:
@@ -37,7 +37,7 @@ Consequences worth knowing:
 
 ### Frontmatter requirements
 
-`FrontmatterParser` is strict on purpose — a malformed skill fails loudly at load rather than silently half-loading:
+`FrontmatterParser` is strict on purpose, a malformed skill fails loudly at load rather than silently half-loading:
 
 - The file must open with a `---` line and close the block with another `---`. Missing or unterminated fences are errors.
 - `name` and `description` are required; a skill missing either fails to load.
@@ -54,9 +54,9 @@ Verified against real published skills (`academy-guide`, `doc-coauthoring`, `fro
 
 | Provider | Auth | Base URL | Tool calling | Verified |
 |---|---|---|---|---|
-| `anthropic` | API key required | Optional override | Expected to work | ⚠️ Not exercised live — no key available during development |
-| `openai` | API key required | Optional override; any OpenAI-compatible endpoint | ✅ Works | ✅ Live, via OpenRouter |
-| `ollama` | None | Defaults to `http://localhost:11434` | ⚠️ Partial — see below | ✅ Live, local |
+| `anthropic` | `incant.providers.anthropic.api-key` | Optional override | Expected to work | ⚠️ Not exercised live, no key available during development |
+| `openai` | `incant.providers.openai.api-key` | Optional override; any OpenAI-compatible endpoint | ✅ Works | ✅ Live, via OpenRouter |
+| `ollama` | None | Defaults to `http://localhost:11434` | ⚠️ Partial, see below | ✅ Live, local |
 
 Selection is per request (`provider` and `model` fields on `POST /api/chat`) with configured defaults, and `GET /api/providers` reports what is actually usable right now.
 
@@ -79,11 +79,11 @@ iterations=2, inputTokens=537, outputTokens=32, durationMillis=3257
 transcript: SystemMessage, UserMessage, AiMessage, ToolExecutionResultMessage, AiMessage
 ```
 
-The model read the skill list from the system prompt, called `load_skill`, received the `SKILL.md` body, and answered from it. Point `incant.base-url` at any OpenAI-compatible endpoint; no other change is needed.
+The model read the skill list from the system prompt, called `load_skill`, received the `SKILL.md` body, and answered from it. Point `incant.providers.openai.base-url` at any OpenAI-compatible endpoint; no other change is needed.
 
 ### Ollama (`qwen2.5:0.5b`)
 
-This is the default local fallback, and it is a 0.5B model — the limitations below are what that size buys, not bugs in Incant.
+This is the default local fallback, and it is a 0.5B model; the limitations below are what that size buys, not bugs in Incant.
 
 **Tool calling on the first turn is reliable.** Four out of four raw probes emitted a well-formed `load_skill` call with correct JSON arguments (`{"name":"writing-clearly"}`) and `finishReason=TOOL_EXECUTION`.
 
@@ -97,8 +97,7 @@ This is the default local fallback, and it is a 0.5B model — the limitations b
 
 ## Not supported yet
 
-- **Document skills** — no sandbox, so they are never offered to the model.
-- **Coding-agent skills** — no workspace mode, same.
-- **Streaming** — responses are returned whole.
-- **Conversation persistence** — the `conversations` and `messages` tables exist and migrate, but `POST /api/chat` is stateless and writes nothing to them.
-- **Per-provider API keys** — there is one global `incant.api-key`. Configuring Anthropic and OpenAI with different keys at the same time is not possible, and `GET /api/providers` can only report that *a* key exists, not that it is valid for a given provider.
+- **Document skills** - no sandbox, so they are never offered to the model.
+- **Coding-agent skills** - no workspace mode, same.
+- **Streaming** - responses are returned whole.
+- **Conversation persistence** - the `conversations` and `messages` tables exist and migrate, but `POST /api/chat` is stateless and writes nothing to them.

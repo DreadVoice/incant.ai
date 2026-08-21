@@ -110,8 +110,8 @@ Incant makes no network calls except to the provider you configured. There is no
 |---|---|---|
 | `v0.1` | Skills parsed and classified | ✅ Done |
 | `v0.2` | Agent loop, one provider | ✅ Done |
-| `v0.3` | Multi-provider | 🔴 Not started |
-| `v1.0` | Chat UI, runnable JAR | 🔴 Not started |
+| `v0.3` | Multi-provider | ✅ Done |
+| `v1.0` | Chat UI, runnable JAR | 🟡 In progress |
 | `v2.0` | Workspace mode, coding-agent skills | 🔴 Not started |
 | `v3.0` | Docker sandbox, document skills | 🔴 Not started |
 

@@ -8,7 +8,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -24,22 +23,10 @@ public class ProviderStatusReporter {
             .connectTimeout(PING_TIMEOUT)
             .build();
 
-    private final String defaultProvider;
-    private final String apiKey;
-    private final String defaultModel;
-    private final String ollamaBaseUrl;
-    private final String ollamaModel;
+    private final ProviderProperties properties;
 
-    public ProviderStatusReporter(@Value("${incant.provider}") String defaultProvider,
-            @Value("${incant.api-key}") String apiKey,
-            @Value("${incant.model}") String defaultModel,
-            @Value("${incant.ollama.base-url}") String ollamaBaseUrl,
-            @Value("${incant.ollama.model}") String ollamaModel) {
-        this.defaultProvider = defaultProvider.strip();
-        this.apiKey = apiKey;
-        this.defaultModel = defaultModel;
-        this.ollamaBaseUrl = ollamaBaseUrl.strip().replaceAll("/+$", "");
-        this.ollamaModel = ollamaModel.strip();
+    public ProviderStatusReporter(ProviderProperties properties) {
+        this.properties = properties;
     }
 
     public Report report() {
@@ -47,31 +34,39 @@ public class ProviderStatusReporter {
         for (String provider : List.of(ProviderFactory.ANTHROPIC, ProviderFactory.OPENAI, ProviderFactory.OLLAMA)) {
             providers.add(ProviderFactory.OLLAMA.equals(provider) ? ollamaStatus() : keyedStatus(provider));
         }
-        return new Report(defaultProvider, providers);
+        return new Report(properties.getProvider(), providers);
     }
 
     private ProviderStatus keyedStatus(String provider) {
-        boolean configured = apiKey != null && !apiKey.isBlank();
-        String model = provider.equals(defaultProvider) ? defaultModel : "";
-        return new ProviderStatus(provider, configured, model,
-                configured ? "api key configured" : "no api key configured");
+        ProviderProperties.Settings settings = properties.settings(provider);
+        if (!settings.hasApiKey()) {
+            return new ProviderStatus(provider, false, settings.getModel(), "no api key configured");
+        }
+        if (!settings.hasModel()) {
+            return new ProviderStatus(provider, false, "", "api key configured but no model configured");
+        }
+        return new ProviderStatus(provider, true, settings.getModel(), "api key configured");
     }
 
     private ProviderStatus ollamaStatus() {
-        List<String> installed = installedModels();
+        ProviderProperties.Settings settings = properties.settings(ProviderFactory.OLLAMA);
+        String baseUrl = baseUrl(settings);
+        String model = settings.getModel();
+
+        List<String> installed = installedModels(baseUrl);
         if (installed == null) {
-            return new ProviderStatus(ProviderFactory.OLLAMA, false, ollamaModel,
-                    "not reachable at " + ollamaBaseUrl);
+            return new ProviderStatus(ProviderFactory.OLLAMA, false, model, "not reachable at " + baseUrl);
         }
-        boolean hasModel = installed.contains(ollamaModel) || installed.contains(ollamaModel + ":latest");
-        return new ProviderStatus(ProviderFactory.OLLAMA, hasModel, ollamaModel,
+
+        boolean hasModel = installed.contains(model) || installed.contains(model + ":latest");
+        return new ProviderStatus(ProviderFactory.OLLAMA, hasModel, model,
                 hasModel ? "model installed" : "model not installed, installed: " + installed);
     }
 
-    private List<String> installedModels() {
+    private List<String> installedModels(String baseUrl) {
         try {
             HttpResponse<String> response = http.send(
-                    HttpRequest.newBuilder(URI.create(ollamaBaseUrl + "/api/tags"))
+                    HttpRequest.newBuilder(URI.create(baseUrl + "/api/tags"))
                             .timeout(PING_TIMEOUT)
                             .GET()
                             .build(),
@@ -89,6 +84,14 @@ public class ProviderStatusReporter {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    static String baseUrl(ProviderProperties.Settings settings) {
+        String baseUrl = settings.getBaseUrl();
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return ProviderFactory.DEFAULT_OLLAMA_BASE_URL;
+        }
+        return baseUrl.strip().replaceAll("/+$", "");
     }
 
     public record Report(String defaultProvider, List<ProviderStatus> providers) {

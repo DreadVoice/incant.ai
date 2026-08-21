@@ -13,7 +13,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.ClassPathResource;
@@ -41,12 +40,11 @@ public class OllamaModelInstaller {
     private final String baseUrl;
     private final String modelName;
 
-    public OllamaModelInstaller(@Value("${incant.ollama.auto-install}") boolean enabled,
-            @Value("${incant.ollama.base-url}") String baseUrl,
-            @Value("${incant.ollama.model}") String modelName) {
-        this.enabled = enabled;
-        this.baseUrl = baseUrl.strip().replaceAll("/+$", "");
-        this.modelName = modelName.strip();
+    public OllamaModelInstaller(ProviderProperties properties) {
+        ProviderProperties.Settings settings = properties.settings(ProviderFactory.OLLAMA);
+        this.enabled = settings.isAutoInstall();
+        this.baseUrl = ProviderStatusReporter.baseUrl(settings);
+        this.modelName = settings.getModel().strip();
     }
 
     @EventListener(ApplicationReadyEvent.class)

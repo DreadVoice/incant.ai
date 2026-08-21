@@ -4,7 +4,6 @@ import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import dev.langchain4j.model.chat.ChatModel;
@@ -14,63 +13,41 @@ public class ChatModelResolver {
 
     private static final Logger log = LoggerFactory.getLogger(ChatModelResolver.class);
 
-    private final String defaultProvider;
-    private final String apiKey;
-    private final String defaultModel;
-    private final String baseUrl;
-    private final String ollamaBaseUrl;
-    private final String ollamaModel;
+    private final ProviderProperties properties;
 
-    public ChatModelResolver(@Value("${incant.provider}") String defaultProvider,
-            @Value("${incant.api-key}") String apiKey,
-            @Value("${incant.model}") String defaultModel,
-            @Value("${incant.base-url}") String baseUrl,
-            @Value("${incant.ollama.base-url}") String ollamaBaseUrl,
-            @Value("${incant.ollama.model}") String ollamaModel) {
-        this.defaultProvider = normalize(defaultProvider);
-        this.apiKey = apiKey;
-        this.defaultModel = defaultModel;
-        this.baseUrl = baseUrl;
-        this.ollamaBaseUrl = ollamaBaseUrl;
-        this.ollamaModel = ollamaModel;
+    public ChatModelResolver(ProviderProperties properties) {
+        this.properties = properties;
     }
 
     public Resolved resolve(String requestedProvider, String requestedModel) {
-        String provider = hasText(requestedProvider) ? normalize(requestedProvider) : defaultProvider;
+        String provider = hasText(requestedProvider) ? normalize(requestedProvider) : properties.getProvider();
         if (!ProviderFactory.supports(provider)) {
             throw new IllegalArgumentException(
                     "unknown provider '" + provider + "', supported: " + ProviderFactory.supported());
         }
 
-        String model = hasText(requestedModel) ? requestedModel.strip() : defaultModelFor(provider);
+        ProviderProperties.Settings settings = properties.settings(provider);
 
-        if (!ProviderFactory.OLLAMA.equals(provider) && !hasText(apiKey)) {
+        if (!ProviderFactory.OLLAMA.equals(provider) && !settings.hasApiKey()) {
+            ProviderProperties.Settings ollama = properties.settings(ProviderFactory.OLLAMA);
             log.warn("no api key configured for provider '{}', falling back to local model '{}'",
-                    provider, ollamaModel);
+                    provider, ollama.getModel());
             provider = ProviderFactory.OLLAMA;
-            model = ollamaModel;
+            settings = ollama;
+            requestedModel = null;
         }
 
-        return new Resolved(provider, model, ProviderFactory.create(provider, keyFor(provider), model,
-                urlFor(provider)));
+        String model = hasText(requestedModel) ? requestedModel.strip() : configuredModel(provider, settings);
+
+        return new Resolved(provider, model,
+                ProviderFactory.create(provider, settings.getApiKey(), model, settings.getBaseUrl()));
     }
 
-    private String defaultModelFor(String provider) {
-        if (ProviderFactory.OLLAMA.equals(provider)) {
-            return ollamaModel;
+    private static String configuredModel(String provider, ProviderProperties.Settings settings) {
+        if (!settings.hasModel()) {
+            throw new IllegalArgumentException("no model configured for provider '" + provider + "'");
         }
-        if (provider.equals(defaultProvider) && hasText(defaultModel)) {
-            return defaultModel;
-        }
-        throw new IllegalArgumentException("model is required for provider '" + provider + "'");
-    }
-
-    private String keyFor(String provider) {
-        return ProviderFactory.OLLAMA.equals(provider) ? "" : apiKey;
-    }
-
-    private String urlFor(String provider) {
-        return ProviderFactory.OLLAMA.equals(provider) ? ollamaBaseUrl : baseUrl;
+        return settings.getModel().strip();
     }
 
     private static String normalize(String value) {
