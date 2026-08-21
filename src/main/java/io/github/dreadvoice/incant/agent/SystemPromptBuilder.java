@@ -48,6 +48,6 @@ public final class SystemPromptBuilder {
     }
 
     private static String oneLine(String description) {
-        return description.strip().replaceAll("\s+", " ");
+        return description.strip().replaceAll("\\s+", " ");
     }
 }

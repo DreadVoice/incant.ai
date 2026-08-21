@@ -4,7 +4,7 @@
 
 Run published skills on Claude, GPT, Gemini, or a local model. Nothing leaves your machine unless you send it there yourself.
 
-> **Status: early development.** Nothing works yet. This README describes what Incant is being built to do, and is honest about what it doesn't do. See [Project status](#project-status) for what actually runs today.
+> **Status: early development.** The skill loader, the agent loop, and three providers work today. The UI, sandbox, and workspace mode do not. See [Project status](#project-status)
 
 ---
 
