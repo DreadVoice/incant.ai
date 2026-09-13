@@ -91,11 +91,11 @@ public class ChatService {
 
     private Turn record(Long conversationId, String message, AgentOrchestrator.Result result, String provider,
             String model) {
+        List<String> skills = SkillTools.loadedSkills(result.toolCalls());
         Conversation conversation = store.recordTurn(
-                conversationId, title(message), message, result.text(), provider, model);
+                conversationId, title(message), message, result.text(), skills, provider, model);
 
-        return new Turn(conversation.getId(), result.text(), provider, model,
-                SkillTools.loadedSkills(result.toolCalls()), result.telemetry());
+        return new Turn(conversation.getId(), result.text(), provider, model, skills, result.telemetry());
     }
 
     private String systemPrompt() {

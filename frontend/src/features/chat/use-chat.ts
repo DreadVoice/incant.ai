@@ -51,7 +51,7 @@ export function useChat({ onTurnComplete }: UseChatOptions): UseChatResult {
     setMessages((current) => [
       ...current,
       { id: createMessageId(), role: 'user', content },
-      { id: replyId, role: 'assistant', content: '', streaming: true },
+      { id: replyId, role: 'assistant', content: '', skills: [], streaming: true },
     ])
     setStatus('sending')
     setError(null)
@@ -105,6 +105,7 @@ export function useChat({ onTurnComplete }: UseChatOptions): UseChatResult {
           id: `stored-${message.id}`,
           role: message.role,
           content: message.content,
+          skills: message.skills,
         })),
       )
       setConversationId(detail.id)

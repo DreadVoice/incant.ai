@@ -234,6 +234,20 @@ class ChatServiceTest {
     }
 
     @Test
+    void aPersistedAnswerKeepsTheSkillsItLoaded() {
+        model.willRequestSkill("writing-clearly");
+        model.willReply("an answer that used the skill");
+
+        ChatService.Turn turn = service.send(null, "use writing-clearly", null, null);
+
+        assertThat(store.history(turn.conversationId()))
+                .filteredOn(message -> message.getRole() == MessageRole.ASSISTANT)
+                .singleElement()
+                .extracting(Message::getSkills)
+                .isEqualTo(List.of("writing-clearly"));
+    }
+
+    @Test
     void unknownConversationIsRejected() {
         model.willReply("answer");
 

@@ -49,6 +49,7 @@ public class ConversationController {
                         message.getId(),
                         message.getRole().name().toLowerCase(java.util.Locale.ROOT),
                         message.getContent(),
+                        List.copyOf(message.getSkills()),
                         message.getCreatedAt()))
                 .toList();
 
@@ -70,6 +71,6 @@ public class ConversationController {
             List<StoredMessage> messages) {
     }
 
-    public record StoredMessage(Long id, String role, String content, Instant createdAt) {
+    public record StoredMessage(Long id, String role, String content, List<String> skills, Instant createdAt) {
     }
 }

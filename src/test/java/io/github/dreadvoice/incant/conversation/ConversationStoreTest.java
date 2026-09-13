@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -34,20 +35,20 @@ class ConversationStoreTest {
 
     @Test
     void listsTheMostRecentlyUpdatedConversationFirst() {
-        Long older = store.recordTurn(null, "older", "first question", "first answer", "ollama", "incant-qwen")
+        Long older = store.recordTurn(null, "older", "first question", "first answer", List.of(), "ollama", "incant-qwen")
                 .getId();
-        Long newer = store.recordTurn(null, "newer", "second question", "second answer", "ollama", "incant-qwen")
+        Long newer = store.recordTurn(null, "newer", "second question", "second answer", List.of(), "ollama", "incant-qwen")
                 .getId();
 
         sleepPastTheClockTick();
-        store.recordTurn(older, "older", "a later question", "a later answer", "ollama", "incant-qwen");
+        store.recordTurn(older, "older", "a later question", "a later answer", List.of(), "ollama", "incant-qwen");
 
         assertThat(store.recent()).extracting(Conversation::getId).containsExactly(older, newer);
     }
 
     @Test
     void countsTheStoredMessages() {
-        Long conversation = store.recordTurn(null, "counted", "a question", "an answer", "ollama", "incant-qwen")
+        Long conversation = store.recordTurn(null, "counted", "a question", "an answer", List.of(), "ollama", "incant-qwen")
                 .getId();
 
         assertThat(store.messageCount(conversation)).isEqualTo(2);
@@ -55,9 +56,9 @@ class ConversationStoreTest {
 
     @Test
     void returnsTheStoredMessagesInOrder() {
-        Long conversation = store.recordTurn(null, "ordered", "first question", "first answer", "ollama", "m")
+        Long conversation = store.recordTurn(null, "ordered", "first question", "first answer", List.of(), "ollama", "m")
                 .getId();
-        store.recordTurn(conversation, "ordered", "second question", "second answer", "ollama", "m");
+        store.recordTurn(conversation, "ordered", "second question", "second answer", List.of(), "ollama", "m");
 
         assertThat(store.history(conversation))
                 .extracting(Message::getRole, Message::getContent)
@@ -66,6 +67,27 @@ class ConversationStoreTest {
                         tuple(MessageRole.ASSISTANT, "first answer"),
                         tuple(MessageRole.USER, "second question"),
                         tuple(MessageRole.ASSISTANT, "second answer"));
+    }
+
+    @Test
+    void storesTheSkillsLoadedForAnAnswer() {
+        Long conversation = store.recordTurn(null, "skills", "use writing-clearly", "an answer",
+                List.of("writing-clearly"), "ollama", "incant-qwen").getId();
+
+        assertThat(store.history(conversation))
+                .extracting(Message::getRole, Message::getSkills)
+                .containsExactly(
+                        tuple(MessageRole.USER, List.of()),
+                        tuple(MessageRole.ASSISTANT, List.of("writing-clearly")));
+    }
+
+    @Test
+    void keepsTheOrderOfSeveralSkillsInOneAnswer() {
+        Long conversation = store.recordTurn(null, "two skills", "use both", "an answer",
+                List.of("csv-report", "writing-clearly"), "ollama", "incant-qwen").getId();
+
+        assertThat(store.history(conversation).get(1).getSkills())
+                .containsExactly("csv-report", "writing-clearly");
     }
 
     private static void sleepPastTheClockTick() {

@@ -33,19 +33,19 @@ public class ConversationStore {
 
     @Transactional(readOnly = true)
     public List<Message> history(Long conversationId) {
-        return messages.findByConversationIdOrderByIdAsc(conversationId);
+        return messages.findWithSkillsByConversationId(conversationId);
     }
 
     @Transactional
     public Conversation recordTurn(Long conversationId, String title, String userMessage, String reply,
-            String provider, String model) {
+            List<String> skills, String provider, String model) {
         Conversation conversation = conversationId == null
                 ? conversations.save(new Conversation(title, provider, model))
                 : load(conversationId);
 
         messages.save(new Message(conversation, MessageRole.USER, userMessage));
         if (reply != null && !reply.isBlank()) {
-            messages.save(new Message(conversation, MessageRole.ASSISTANT, reply));
+            messages.save(new Message(conversation, MessageRole.ASSISTANT, reply, skills));
         }
 
         conversation.setProvider(provider);

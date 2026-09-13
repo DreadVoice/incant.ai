@@ -11,6 +11,7 @@ export interface StoredMessage {
   id: number
   role: 'user' | 'assistant'
   content: string
+  skills: string[]
   createdAt: string
 }
 
