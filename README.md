@@ -76,7 +76,7 @@ Everything else (sandboxing, workspace access, subagents) is infrastructure hang
 
 ## Getting started
 
-There is no packaged release yet. What runs today is a Spring Boot service with two JSON endpoints, and you drive it from the terminal.
+There is no packaged release yet. What runs today is a Spring Boot service with three JSON endpoints, and you drive it from the terminal.
 
 **Requirements:** JDK 21+. [Ollama](https://ollama.com) if you want a local model to fall back on. Docker only when document skills land.
 
@@ -127,6 +127,25 @@ curl -s -X POST localhost:8080/api/chat   -H "Content-Type: application/json"   
 ```
 
 Conversations and their messages are stored in SQLite at `./data/incant.db`, so they outlive a restart. Leaving `conversationId` out starts a new conversation; an id that does not exist is rejected with HTTP 400.
+
+**Stream the answer.** `POST /api/chat/stream` takes the same body and returns Server-Sent Events, so the reply arrives token by token instead of in one block:
+
+```bash
+curl -sN -X POST localhost:8080/api/chat/stream   -H "Content-Type: application/json"   -d '{"message":"Use the writing-clearly skill"}'
+```
+
+```
+event:skill
+data:{"name":"writing-clearly"}
+
+event:token
+data:{"text":"Read "}
+
+event:done
+data:{"reply":"Read the whole passage before changing anything.","provider":"openai","model":"gpt-4o-mini","conversationId":1,"skills":["writing-clearly"],"telemetry":{...}}
+```
+
+A `skill` event fires the moment a skill is loaded, `token` carries each fragment as the model produces it, and `done` repeats the whole reply with the same fields the blocking endpoint returns. Failures arrive as a single `error` event rather than an HTTP status, because the response has already started. The turn is written to SQLite when it completes, exactly as the blocking endpoint does.
 
 **Check that a skill was really used.** Name a skill in the message and watch `iterations` in the response. One iteration means the model answered on its own; two or more means it called `load_skill` and read the instructions first.
 

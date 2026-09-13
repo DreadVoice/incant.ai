@@ -11,7 +11,7 @@ import { useChat } from './use-chat'
 export function ChatPanel() {
   const { messages, status, error, send } = useChat()
   const providers = useProviderSelection()
-  const pending = status === 'sending'
+  const pending = status !== 'idle'
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function ChatPanel() {
               messages.map((message) => <ChatMessage key={message.id} message={message} />)
             )}
 
-            {pending ? (
+            {status === 'sending' ? (
               <p className="text-muted-foreground text-sm" role="status">
                 Waiting for the model…
               </p>

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -25,14 +26,17 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.github.dreadvoice.incant.agent.SkillTools;
 import io.github.dreadvoice.incant.agent.SystemPromptBuilder;
 import io.github.dreadvoice.incant.agent.ToolDispatcher;
 import io.github.dreadvoice.incant.agent.ToolHandler;
 import io.github.dreadvoice.incant.conversation.Conversation;
 import io.github.dreadvoice.incant.conversation.ConversationRepository;
+import io.github.dreadvoice.incant.conversation.ConversationStore;
 import io.github.dreadvoice.incant.conversation.Message;
 import io.github.dreadvoice.incant.conversation.MessageRepository;
 import io.github.dreadvoice.incant.conversation.MessageRole;
@@ -43,6 +47,7 @@ import io.github.dreadvoice.incant.skill.SkillLoader;
 import io.github.dreadvoice.incant.skill.SkillRegistry;
 
 @DataJpaTest
+@Import(ConversationStore.class)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class ChatServiceTest {
 
@@ -58,7 +63,10 @@ class ChatServiceTest {
     @Autowired
     private MessageRepository messages;
 
-    private StubModel model;
+    @Autowired
+    private ConversationStore store;
+
+    private Script model;
 
     private ChatService service;
 
@@ -70,9 +78,9 @@ class ChatServiceTest {
 
     @BeforeEach
     void setUp() {
-        model = new StubModel();
-        service = new ChatService(resolver(model), new ToolDispatcher(List.of(new StubSkillLoader())), promptBuilder(),
-                conversations, messages, 10);
+        model = new Script();
+        service = new ChatService(resolver(model), new ToolDispatcher(List.of(new StubSkillLoader())),
+                promptBuilder(), store, 10);
     }
 
     @Test
@@ -179,6 +187,53 @@ class ChatServiceTest {
     }
 
     @Test
+    void streamingEmitsTokensAndStoresTheTurn() {
+        model.willReply("a streamed answer");
+        RecordingListener listener = new RecordingListener();
+
+        service.stream(null, "stream this", null, null, listener);
+
+        assertThat(listener.error).isNull();
+        assertThat(listener.tokens).containsExactly("a ", "streamed ", "answer ");
+        assertThat(listener.streamedText()).isEqualTo("a streamed answer");
+        assertThat(listener.turn.reply()).isEqualTo("a streamed answer");
+        assertThat(messages.findByConversationIdOrderByIdAsc(listener.turn.conversationId()))
+                .extracting(Message::getRole, Message::getContent)
+                .containsExactly(
+                        org.assertj.core.api.Assertions.tuple(MessageRole.USER, "stream this"),
+                        org.assertj.core.api.Assertions.tuple(MessageRole.ASSISTANT, "a streamed answer"));
+    }
+
+    @Test
+    void streamingReportsSkillLoadsAsTheyHappen() {
+        model.willRequestSkill("writing-clearly");
+        model.willReply("the streamed answer");
+        RecordingListener listener = new RecordingListener();
+
+        service.stream(null, "use writing-clearly", null, null, listener);
+
+        assertThat(listener.skills).containsExactly("writing-clearly");
+        assertThat(listener.turn.skills()).containsExactly("writing-clearly");
+    }
+
+    @Test
+    void streamingContinuesAnExistingConversation() {
+        model.willReply("first answer");
+        ChatService.Turn first = service.send(null, "first question", null, null);
+
+        model.willReply("second answer");
+        RecordingListener listener = new RecordingListener();
+        service.stream(first.conversationId(), "second question", null, null, listener);
+
+        assertThat(listener.turn.conversationId()).isEqualTo(first.conversationId());
+        assertThat(text(model.lastRequest().messages()))
+                .containsExactly("first question", "first answer", "second question");
+        assertThat(messages.findByConversationIdOrderByIdAsc(first.conversationId()))
+                .extracting(Message::getContent)
+                .containsExactly("first question", "first answer", "second question", "second answer");
+    }
+
+    @Test
     void unknownConversationIsRejected() {
         model.willReply("answer");
 
@@ -202,12 +257,17 @@ class ChatServiceTest {
         return new SystemPromptBuilder(registry);
     }
 
-    private static ChatModelResolver resolver(ChatModel model) {
+    private static ChatModelResolver resolver(Script script) {
         return new ChatModelResolver(new ProviderProperties()) {
 
             @Override
             public Resolved resolve(String requestedProvider, String requestedModel) {
-                return new Resolved("ollama", "incant-qwen", model);
+                return new Resolved("ollama", "incant-qwen", new StubModel(script));
+            }
+
+            @Override
+            public ResolvedStream resolveStreaming(String requestedProvider, String requestedModel) {
+                return new ResolvedStream("ollama", "incant-qwen", new StubStreamingModel(script));
             }
         };
     }
@@ -229,7 +289,7 @@ class ChatServiceTest {
         }
     }
 
-    private static final class StubModel implements ChatModel {
+    private static final class Script {
 
         private final Deque<AiMessage> replies = new ArrayDeque<>();
         private final List<ChatRequest> requests = new ArrayList<>();
@@ -250,11 +310,65 @@ class ChatServiceTest {
             return requests.get(requests.size() - 1);
         }
 
-        @Override
-        public ChatResponse doChat(ChatRequest request) {
+        private ChatResponse answer(ChatRequest request) {
             requests.add(request);
             AiMessage reply = replies.isEmpty() ? AiMessage.from("out of stubbed replies") : replies.poll();
             return ChatResponse.builder().aiMessage(reply).build();
+        }
+    }
+
+    private record StubModel(Script script) implements ChatModel {
+
+        @Override
+        public ChatResponse doChat(ChatRequest request) {
+            return script.answer(request);
+        }
+    }
+
+    private record StubStreamingModel(Script script) implements StreamingChatModel {
+
+        @Override
+        public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
+            ChatResponse response = script.answer(request);
+            String text = response.aiMessage().text();
+            if (text != null) {
+                for (String word : text.split(" ")) {
+                    handler.onPartialResponse(word + " ");
+                }
+            }
+            handler.onCompleteResponse(response);
+        }
+    }
+
+    private static final class RecordingListener implements ChatService.StreamListener {
+
+        private final List<String> tokens = new ArrayList<>();
+        private final List<String> skills = new ArrayList<>();
+        private ChatService.Turn turn;
+        private Throwable error;
+
+        @Override
+        public void onToken(String token) {
+            tokens.add(token);
+        }
+
+        @Override
+        public void onSkill(String skill) {
+            skills.add(skill);
+        }
+
+        @Override
+        public void onComplete(ChatService.Turn completed) {
+            turn = completed;
+        }
+
+        @Override
+        public void onError(Throwable cause) {
+            error = cause;
+        }
+
+        private String streamedText() {
+            return String.join("", tokens).strip();
         }
     }
 }

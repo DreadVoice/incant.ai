@@ -14,6 +14,7 @@ export interface ChatRequest {
 }
 
 export interface ChatReply {
+  conversationId: number
   reply: string | null
   provider: string
   model: string
@@ -28,4 +29,5 @@ export interface ChatMessage {
   provider?: string
   model?: string
   skills?: string[]
+  streaming?: boolean
 }

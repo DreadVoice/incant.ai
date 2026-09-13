@@ -4,9 +4,13 @@ import java.util.Locale;
 import java.util.Set;
 
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
+import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
 public final class ProviderFactory {
 
@@ -43,6 +47,47 @@ public final class ProviderFactory {
             default -> throw new IllegalArgumentException(
                     "unknown provider '" + provider + "', supported: " + SUPPORTED);
         };
+    }
+
+    public static StreamingChatModel createStreaming(String provider, String apiKey, String modelName,
+            String baseUrl) {
+        String name = normalize(require(provider, "provider"));
+        String model = require(modelName, "modelName");
+
+        return switch (name) {
+            case ANTHROPIC -> streamingAnthropic(require(apiKey, "apiKey"), model, baseUrl);
+            case OPENAI -> streamingOpenAi(require(apiKey, "apiKey"), model, baseUrl);
+            case OLLAMA -> streamingOllama(model, baseUrl);
+            default -> throw new IllegalArgumentException(
+                    "unknown provider '" + provider + "', supported: " + SUPPORTED);
+        };
+    }
+
+    private static StreamingChatModel streamingAnthropic(String apiKey, String modelName, String baseUrl) {
+        AnthropicStreamingChatModel.AnthropicStreamingChatModelBuilder builder = AnthropicStreamingChatModel.builder()
+                .apiKey(apiKey)
+                .modelName(modelName);
+        if (hasText(baseUrl)) {
+            builder.baseUrl(baseUrl.strip());
+        }
+        return builder.build();
+    }
+
+    private static StreamingChatModel streamingOpenAi(String apiKey, String modelName, String baseUrl) {
+        OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
+                .apiKey(apiKey)
+                .modelName(modelName);
+        if (hasText(baseUrl)) {
+            builder.baseUrl(baseUrl.strip());
+        }
+        return builder.build();
+    }
+
+    private static StreamingChatModel streamingOllama(String modelName, String baseUrl) {
+        return OllamaStreamingChatModel.builder()
+                .baseUrl(hasText(baseUrl) ? baseUrl.strip() : DEFAULT_OLLAMA_BASE_URL)
+                .modelName(modelName)
+                .build();
     }
 
     private static ChatModel anthropic(String apiKey, String modelName, String baseUrl) {

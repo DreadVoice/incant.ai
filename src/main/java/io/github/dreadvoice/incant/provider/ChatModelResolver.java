@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 
 @Component
 public class ChatModelResolver {
@@ -20,6 +21,20 @@ public class ChatModelResolver {
     }
 
     public Resolved resolve(String requestedProvider, String requestedModel) {
+        Choice choice = choose(requestedProvider, requestedModel);
+
+        return new Resolved(choice.provider(), choice.model(), ProviderFactory.create(
+                choice.provider(), choice.settings().getApiKey(), choice.model(), choice.settings().getBaseUrl()));
+    }
+
+    public ResolvedStream resolveStreaming(String requestedProvider, String requestedModel) {
+        Choice choice = choose(requestedProvider, requestedModel);
+
+        return new ResolvedStream(choice.provider(), choice.model(), ProviderFactory.createStreaming(
+                choice.provider(), choice.settings().getApiKey(), choice.model(), choice.settings().getBaseUrl()));
+    }
+
+    private Choice choose(String requestedProvider, String requestedModel) {
         String provider = hasText(requestedProvider) ? normalize(requestedProvider) : properties.getProvider();
         if (!ProviderFactory.supports(provider)) {
             throw new IllegalArgumentException(
@@ -39,8 +54,7 @@ public class ChatModelResolver {
 
         String model = hasText(requestedModel) ? requestedModel.strip() : configuredModel(provider, settings);
 
-        return new Resolved(provider, model,
-                ProviderFactory.create(provider, settings.getApiKey(), model, settings.getBaseUrl()));
+        return new Choice(provider, model, settings);
     }
 
     private static String configuredModel(String provider, ProviderProperties.Settings settings) {
@@ -59,5 +73,11 @@ public class ChatModelResolver {
     }
 
     public record Resolved(String provider, String model, ChatModel chatModel) {
+    }
+
+    public record ResolvedStream(String provider, String model, StreamingChatModel chatModel) {
+    }
+
+    private record Choice(String provider, String model, ProviderProperties.Settings settings) {
     }
 }
