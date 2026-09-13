@@ -1,16 +1,23 @@
 import { useEffect, useRef } from 'react'
 
 import { ProviderSelector } from '@/features/providers/provider-selector'
+import type { ProviderReport } from '@/features/providers/types'
 import { useProviderSelection } from '@/features/providers/use-provider-selection'
+import type { ProviderStatusState } from '@/features/providers/use-providers'
 
 import { ChatComposer } from './chat-composer'
 import { ChatMessage } from './chat-message'
 import { SkillActivityPanel } from './skill-activity-panel'
 import { useChat } from './use-chat'
 
-export function ChatPanel() {
+interface ChatPanelProps {
+  report: ProviderReport | null
+  status: ProviderStatusState
+}
+
+export function ChatPanel({ report, status: providerStatus }: ChatPanelProps) {
   const { messages, status, error, send } = useChat()
-  const providers = useProviderSelection()
+  const providers = useProviderSelection(report)
   const pending = status !== 'idle'
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -19,7 +26,7 @@ export function ChatPanel() {
   }, [messages, pending])
 
   return (
-    <div className="flex h-svh">
+    <div className="flex min-w-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="border-b px-4 py-3">
           <div className="mx-auto flex max-w-3xl items-center gap-2">
@@ -63,8 +70,8 @@ export function ChatPanel() {
               onSend={(message) => void send(message, providers.selection)}
             />
             <ProviderSelector
-              report={providers.report}
-              status={providers.status}
+              report={report}
+              status={providerStatus}
               provider={providers.provider}
               model={providers.model}
               disabled={pending}

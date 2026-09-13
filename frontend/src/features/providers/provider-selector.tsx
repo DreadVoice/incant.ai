@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select'
 
 import type { ProviderReport } from './types'
-import type { ProviderStatusState } from './use-provider-selection'
+import type { ProviderStatusState } from './use-providers'
 
 interface ProviderSelectorProps {
   report: ProviderReport | null
