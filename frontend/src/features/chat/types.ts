@@ -9,6 +9,7 @@ export interface ChatTelemetry {
 
 export interface ChatRequest {
   message: string
+  conversationId?: number
   provider?: string
   model?: string
 }

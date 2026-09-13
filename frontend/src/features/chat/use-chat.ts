@@ -23,6 +23,7 @@ function createMessageId(): string {
 
 export function useChat(): UseChatResult {
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [conversationId, setConversationId] = useState<number | null>(null)
   const [status, setStatus] = useState<ChatStatus>('idle')
   const [error, setError] = useState<string | null>(null)
 
@@ -49,7 +50,12 @@ export function useChat(): UseChatResult {
 
     try {
       await streamChatMessage(
-        { message: content, provider: selection.provider, model: selection.model },
+        {
+          message: content,
+          conversationId: conversationId ?? undefined,
+          provider: selection.provider,
+          model: selection.model,
+        },
         {
           onToken: (text) => {
             setStatus('streaming')
@@ -59,6 +65,7 @@ export function useChat(): UseChatResult {
             update((message) => ({ ...message, skills: [...(message.skills ?? []), name] }))
           },
           onDone: (reply) => {
+            setConversationId(reply.conversationId)
             update((message) => ({
               ...message,
               content: reply.reply ?? message.content,
@@ -79,7 +86,7 @@ export function useChat(): UseChatResult {
     } finally {
       setStatus('idle')
     }
-  }, [])
+  }, [conversationId])
 
   return { messages, status, error, send }
 }
