@@ -45,6 +45,51 @@ dependencies {
 	implementation("org.yaml:snakeyaml")
 }
 
+val frontendDir = layout.projectDirectory.dir("frontend")
+val npmExecutable = if (System.getProperty("os.name").lowercase().contains("windows")) "npm.cmd" else "npm"
+
+val installFrontendDependencies = tasks.register<Exec>("installFrontendDependencies") {
+	group = "frontend"
+	description = "Installs the frontend npm dependencies from the lockfile."
+	workingDir = frontendDir.asFile
+	commandLine(npmExecutable, "ci")
+	inputs.file(frontendDir.file("package.json"))
+	inputs.file(frontendDir.file("package-lock.json"))
+	outputs.dir(frontendDir.dir("node_modules"))
+}
+
+val buildFrontend = tasks.register<Exec>("buildFrontend") {
+	group = "frontend"
+	description = "Type-checks and builds the frontend into frontend/dist."
+	dependsOn(installFrontendDependencies)
+	workingDir = frontendDir.asFile
+	commandLine(npmExecutable, "run", "build")
+	inputs.dir(frontendDir.dir("src"))
+	inputs.dir(frontendDir.dir("public"))
+	inputs.files(
+		frontendDir.file("index.html"),
+		frontendDir.file("package.json"),
+		frontendDir.file("vite.config.ts"),
+		frontendDir.file("tsconfig.json"),
+		frontendDir.file("tsconfig.app.json"),
+		frontendDir.file("tsconfig.node.json"),
+	)
+	outputs.dir(frontendDir.dir("dist"))
+}
+
+val bundleFrontend = tasks.register<Sync>("bundleFrontend") {
+	group = "frontend"
+	description = "Collects the built frontend as the static resources served by the application."
+	from(buildFrontend)
+	into(layout.buildDirectory.dir("frontend-static"))
+}
+
+tasks.bootJar {
+	from(bundleFrontend) {
+		into("BOOT-INF/classes/static")
+	}
+}
+
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
