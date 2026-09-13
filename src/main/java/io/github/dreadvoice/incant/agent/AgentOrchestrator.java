@@ -2,6 +2,7 @@ package io.github.dreadvoice.incant.agent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.slf4j.Logger;
@@ -66,6 +67,7 @@ public final class AgentOrchestrator {
         messages.addAll(history);
         messages.add(UserMessage.from(userMessage));
 
+        List<ToolCall> toolCalls = new ArrayList<>();
         long startedAt = System.currentTimeMillis();
         TokenUsage usage = new TokenUsage();
 
@@ -81,11 +83,14 @@ public final class AgentOrchestrator {
                 Telemetry telemetry = telemetry(iteration, usage, startedAt);
                 log.info("turn finished after {} iterations, {} tokens in {} ms",
                         telemetry.iterations(), telemetry.totalTokens(), telemetry.durationMillis());
-                return new Result(reply.text(), List.copyOf(messages), iteration, telemetry);
+                return new Result(reply.text(), List.copyOf(messages), iteration, telemetry,
+                        List.copyOf(toolCalls));
             }
 
             for (ToolExecutionRequest call : reply.toolExecutionRequests()) {
-                messages.add(ToolExecutionResultMessage.from(call, dispatcher.dispatch(call)));
+                ToolDispatcher.Dispatch dispatch = dispatcher.dispatch(call);
+                toolCalls.add(new ToolCall(call.name(), dispatch.arguments(), dispatch.failed()));
+                messages.add(ToolExecutionResultMessage.from(call, dispatch.text()));
             }
         }
 
@@ -118,7 +123,11 @@ public final class AgentOrchestrator {
         return value == null ? 0 : value;
     }
 
-    public record Result(String text, List<ChatMessage> messages, int iterations, Telemetry telemetry) {
+    public record Result(String text, List<ChatMessage> messages, int iterations, Telemetry telemetry,
+            List<ToolCall> toolCalls) {
+    }
+
+    public record ToolCall(String tool, Map<String, Object> arguments, boolean failed) {
     }
 
     public record Telemetry(int iterations, int inputTokens, int outputTokens, long durationMillis) {

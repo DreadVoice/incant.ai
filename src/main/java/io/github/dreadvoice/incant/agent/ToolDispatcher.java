@@ -38,25 +38,25 @@ public final class ToolDispatcher {
         return name != null && handlers.containsKey(name);
     }
 
-    public String dispatch(ToolExecutionRequest request) {
+    public Dispatch dispatch(ToolExecutionRequest request) {
         Objects.requireNonNull(request, "request");
 
         ToolHandler handler = handlers.get(request.name());
         if (handler == null) {
-            return error("unknown tool '" + request.name() + "', available: " + handlers.keySet());
+            return failed("unknown tool '" + request.name() + "', available: " + handlers.keySet(), Map.of());
         }
 
         Map<String, Object> arguments;
         try {
             arguments = parse(request.arguments());
         } catch (Exception e) {
-            return error("could not read arguments for '" + request.name() + "': " + e.getMessage());
+            return failed("could not read arguments for '" + request.name() + "': " + e.getMessage(), Map.of());
         }
 
         try {
-            return handler.execute(arguments);
+            return new Dispatch(handler.execute(arguments), false, arguments);
         } catch (Exception e) {
-            return error("tool '" + request.name() + "' failed: " + e.getMessage());
+            return failed("tool '" + request.name() + "' failed: " + e.getMessage(), arguments);
         }
     }
 
@@ -68,7 +68,10 @@ public final class ToolDispatcher {
         return parsed == null ? Map.of() : parsed;
     }
 
-    private static String error(String message) {
-        return "Error: " + message;
+    private static Dispatch failed(String message, Map<String, Object> arguments) {
+        return new Dispatch("Error: " + message, true, arguments);
+    }
+
+    public record Dispatch(String text, boolean failed, Map<String, Object> arguments) {
     }
 }

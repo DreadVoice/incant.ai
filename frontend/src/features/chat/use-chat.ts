@@ -53,6 +53,7 @@ export function useChat(): UseChatResult {
           content: reply.reply ?? '',
           provider: reply.provider,
           model: reply.model,
+          skills: reply.skills,
         },
       ])
     } catch (cause) {

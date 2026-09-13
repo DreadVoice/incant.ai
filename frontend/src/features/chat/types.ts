@@ -17,6 +17,7 @@ export interface ChatReply {
   reply: string | null
   provider: string
   model: string
+  skills: string[]
   telemetry: ChatTelemetry
 }
 
@@ -26,4 +27,5 @@ export interface ChatMessage {
   content: string
   provider?: string
   model?: string
+  skills?: string[]
 }

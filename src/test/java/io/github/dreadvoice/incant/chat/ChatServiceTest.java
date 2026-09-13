@@ -8,6 +8,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -25,8 +27,10 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import io.github.dreadvoice.incant.agent.SkillTools;
 import io.github.dreadvoice.incant.agent.SystemPromptBuilder;
 import io.github.dreadvoice.incant.agent.ToolDispatcher;
+import io.github.dreadvoice.incant.agent.ToolHandler;
 import io.github.dreadvoice.incant.conversation.Conversation;
 import io.github.dreadvoice.incant.conversation.ConversationRepository;
 import io.github.dreadvoice.incant.conversation.Message;
@@ -67,7 +71,7 @@ class ChatServiceTest {
     @BeforeEach
     void setUp() {
         model = new StubModel();
-        service = new ChatService(resolver(model), new ToolDispatcher(List.of()), promptBuilder(),
+        service = new ChatService(resolver(model), new ToolDispatcher(List.of(new StubSkillLoader())), promptBuilder(),
                 conversations, messages, 10);
     }
 
@@ -145,6 +149,36 @@ class ChatServiceTest {
     }
 
     @Test
+    void reportsTheSkillsLoadedDuringTheTurn() {
+        model.willRequestSkill("writing-clearly");
+        model.willReply("an answer that used the skill");
+
+        ChatService.Turn turn = service.send(null, "use writing-clearly", null, null);
+
+        assertThat(turn.skills()).containsExactly("writing-clearly");
+        assertThat(turn.telemetry().iterations()).isEqualTo(2);
+    }
+
+    @Test
+    void reportsNoSkillsWhenTheModelAnswersOnItsOwn() {
+        model.willReply("a straight answer");
+
+        ChatService.Turn turn = service.send(null, "just answer", null, null);
+
+        assertThat(turn.skills()).isEmpty();
+    }
+
+    @Test
+    void doesNotReportASkillThatFailedToLoad() {
+        model.willRequestSkill("missing");
+        model.willReply("the skill could not be read");
+
+        ChatService.Turn turn = service.send(null, "use missing", null, null);
+
+        assertThat(turn.skills()).isEmpty();
+    }
+
+    @Test
     void unknownConversationIsRejected() {
         model.willReply("answer");
 
@@ -178,6 +212,23 @@ class ChatServiceTest {
         };
     }
 
+    private static final class StubSkillLoader implements ToolHandler {
+
+        @Override
+        public String name() {
+            return SystemPromptBuilder.LOAD_SKILL_TOOL;
+        }
+
+        @Override
+        public String execute(Map<String, Object> arguments) {
+            String skill = String.valueOf(arguments.get(SkillTools.NAME_ARGUMENT));
+            if ("missing".equals(skill)) {
+                throw new IllegalArgumentException("unknown skill '" + skill + "'");
+            }
+            return "instructions for " + skill;
+        }
+    }
+
     private static final class StubModel implements ChatModel {
 
         private final Deque<AiMessage> replies = new ArrayDeque<>();
@@ -185,6 +236,14 @@ class ChatServiceTest {
 
         private void willReply(String text) {
             replies.add(AiMessage.from(text));
+        }
+
+        private void willRequestSkill(String skill) {
+            replies.add(AiMessage.from(ToolExecutionRequest.builder()
+                    .id("1")
+                    .name(SystemPromptBuilder.LOAD_SKILL_TOOL)
+                    .arguments("{\"" + SkillTools.NAME_ARGUMENT + "\":\"" + skill + "\"}")
+                    .build()));
         }
 
         private ChatRequest lastRequest() {

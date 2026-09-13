@@ -1,5 +1,6 @@
 package io.github.dreadvoice.incant.api;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -31,7 +32,8 @@ public class ChatController {
         ChatService.Turn turn = chat.send(
                 request.conversationId(), request.message(), request.provider(), request.model());
 
-        return new ChatReply(turn.reply(), turn.provider(), turn.model(), turn.conversationId(), turn.telemetry());
+        return new ChatReply(turn.reply(), turn.provider(), turn.model(), turn.conversationId(), turn.skills(),
+                turn.telemetry());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -43,7 +45,7 @@ public class ChatController {
     public record ChatMessage(@NotBlank String message, Long conversationId, String provider, String model) {
     }
 
-    public record ChatReply(String reply, String provider, String model, Long conversationId,
+    public record ChatReply(String reply, String provider, String model, Long conversationId, List<String> skills,
             AgentOrchestrator.Telemetry telemetry) {
     }
 }

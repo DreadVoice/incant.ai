@@ -30,4 +30,14 @@ public final class SkillTools {
     public static List<ToolSpecification> all() {
         return List.of(loadSkill());
     }
+
+    public static List<String> loadedSkills(List<AgentOrchestrator.ToolCall> toolCalls) {
+        return toolCalls.stream()
+                .filter(call -> !call.failed())
+                .filter(call -> SystemPromptBuilder.LOAD_SKILL_TOOL.equals(call.tool()))
+                .map(call -> call.arguments().get(NAME_ARGUMENT))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .toList();
+    }
 }

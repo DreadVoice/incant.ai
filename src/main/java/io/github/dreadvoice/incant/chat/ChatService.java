@@ -68,7 +68,8 @@ public class ChatService {
         conversation.setModelName(resolved.model());
         conversations.save(conversation);
 
-        return new Turn(conversation.getId(), reply, resolved.provider(), resolved.model(), result.telemetry());
+        return new Turn(conversation.getId(), reply, resolved.provider(), resolved.model(),
+                SkillTools.loadedSkills(result.toolCalls()), result.telemetry());
     }
 
     private Conversation load(Long conversationId) {
@@ -99,7 +100,7 @@ public class ChatService {
         return firstLine.substring(0, TITLE_LENGTH - 1).strip() + "…";
     }
 
-    public record Turn(Long conversationId, String reply, String provider, String model,
+    public record Turn(Long conversationId, String reply, String provider, String model, List<String> skills,
             AgentOrchestrator.Telemetry telemetry) {
     }
 }
