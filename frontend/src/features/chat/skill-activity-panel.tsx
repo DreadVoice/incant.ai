@@ -23,7 +23,9 @@ export function SkillActivityPanel({ messages }: SkillActivityPanelProps) {
             {turns.map((turn, index) => (
               <li key={turn.id} className="flex flex-col gap-1.5">
                 <span className="text-muted-foreground text-xs">Turn {index + 1}</span>
-                {turn.skills !== undefined && turn.skills.length > 0 ? (
+                {turn.skills === undefined ? (
+                  <span className="text-muted-foreground text-xs">Not recorded for a reopened conversation</span>
+                ) : turn.skills.length > 0 ? (
                   <ul className="flex flex-wrap gap-1">
                     {turn.skills.map((skill, position) => (
                       <li

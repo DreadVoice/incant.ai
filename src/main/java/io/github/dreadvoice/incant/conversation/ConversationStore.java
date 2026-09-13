@@ -22,6 +22,16 @@ public class ConversationStore {
     }
 
     @Transactional(readOnly = true)
+    public List<Conversation> recent() {
+        return conversations.findAllByOrderByUpdatedAtDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public long messageCount(Long conversationId) {
+        return messages.countByConversationId(conversationId);
+    }
+
+    @Transactional(readOnly = true)
     public List<Message> history(Long conversationId) {
         return messages.findByConversationIdOrderByIdAsc(conversationId);
     }
@@ -40,6 +50,7 @@ public class ConversationStore {
 
         conversation.setProvider(provider);
         conversation.setModelName(model);
+        conversation.touch();
         return conversations.save(conversation);
     }
 

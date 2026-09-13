@@ -8,15 +8,16 @@ import type { ProviderStatusState } from '@/features/providers/use-providers'
 import { ChatComposer } from './chat-composer'
 import { ChatMessage } from './chat-message'
 import { SkillActivityPanel } from './skill-activity-panel'
-import { useChat } from './use-chat'
+import type { UseChatResult } from './use-chat'
 
 interface ChatPanelProps {
+  chat: UseChatResult
   report: ProviderReport | null
   status: ProviderStatusState
 }
 
-export function ChatPanel({ report, status: providerStatus }: ChatPanelProps) {
-  const { messages, status, error, send } = useChat()
+export function ChatPanel({ chat, report, status: providerStatus }: ChatPanelProps) {
+  const { messages, status, error, send } = chat
   const providers = useProviderSelection(report)
   const pending = status !== 'idle'
   const bottomRef = useRef<HTMLDivElement>(null)
