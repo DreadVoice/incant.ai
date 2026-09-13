@@ -1,6 +1,6 @@
 # Incant frontend
 
-The React single-page app for Incant, built with Vite and TypeScript.
+The React single-page app for Incant, built with Vite and TypeScript, styled with Tailwind CSS and shadcn/ui.
 
 ## Requirements
 
@@ -18,4 +18,4 @@ Run these from this directory:
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | Run Oxlint |
 
-Imports beginning with `@/` resolve to `src/`.
+Imports beginning with `@/` resolve to `src/`. shadcn/ui components live in `src/components/ui`, and the theme tokens are defined in `src/index.css`.
