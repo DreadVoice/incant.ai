@@ -1,11 +1,15 @@
 import { useEffect, useRef } from 'react'
 
+import { ProviderSelector } from '@/features/providers/provider-selector'
+import { useProviderSelection } from '@/features/providers/use-provider-selection'
+
 import { ChatComposer } from './chat-composer'
 import { ChatMessage } from './chat-message'
 import { useChat } from './use-chat'
 
 export function ChatPanel() {
   const { messages, status, error, send } = useChat()
+  const providers = useProviderSelection()
   const pending = status === 'sending'
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -16,9 +20,20 @@ export function ChatPanel() {
   return (
     <div className="flex h-svh flex-col">
       <header className="border-b px-4 py-3">
-        <div className="mx-auto flex max-w-3xl items-center gap-2">
-          <img src="/favicon.svg" alt="" className="size-6" />
-          <h1 className="text-sm font-semibold tracking-tight">Incant</h1>
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <img src="/favicon.svg" alt="" className="size-6" />
+            <h1 className="text-sm font-semibold tracking-tight">Incant</h1>
+          </div>
+          <ProviderSelector
+            report={providers.report}
+            status={providers.status}
+            provider={providers.provider}
+            model={providers.model}
+            disabled={pending}
+            onProviderChange={providers.selectProvider}
+            onModelChange={providers.setModel}
+          />
         </div>
       </header>
 
@@ -52,7 +67,10 @@ export function ChatPanel() {
               {error}
             </p>
           ) : null}
-          <ChatComposer pending={pending} onSend={send} />
+          <ChatComposer
+            pending={pending}
+            onSend={(message) => void send(message, providers.selection)}
+          />
         </div>
       </footer>
     </div>

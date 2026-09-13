@@ -9,6 +9,8 @@ export interface ChatTelemetry {
 
 export interface ChatRequest {
   message: string
+  provider?: string
+  model?: string
 }
 
 export interface ChatReply {

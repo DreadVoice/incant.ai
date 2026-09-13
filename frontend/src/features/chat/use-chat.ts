@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react'
 
+import type { ProviderSelection } from '@/features/providers/types'
+
 import { sendChatMessage } from './api'
 import type { ChatMessage } from './types'
 
@@ -16,7 +18,7 @@ export interface UseChatResult {
   messages: ChatMessage[]
   status: ChatStatus
   error: string | null
-  send: (input: string) => Promise<void>
+  send: (input: string, selection: ProviderSelection) => Promise<void>
 }
 
 export function useChat(): UseChatResult {
@@ -24,7 +26,7 @@ export function useChat(): UseChatResult {
   const [status, setStatus] = useState<ChatStatus>('idle')
   const [error, setError] = useState<string | null>(null)
 
-  const send = useCallback(async (input: string) => {
+  const send = useCallback(async (input: string, selection: ProviderSelection) => {
     const content = input.trim()
     if (content.length === 0) {
       return
@@ -38,7 +40,11 @@ export function useChat(): UseChatResult {
     setError(null)
 
     try {
-      const reply = await sendChatMessage({ message: content })
+      const reply = await sendChatMessage({
+        message: content,
+        provider: selection.provider,
+        model: selection.model,
+      })
       setMessages((current) => [
         ...current,
         {
