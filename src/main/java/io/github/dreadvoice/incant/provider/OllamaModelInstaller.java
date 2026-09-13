@@ -43,7 +43,7 @@ public class OllamaModelInstaller {
     public OllamaModelInstaller(ProviderProperties properties) {
         ProviderProperties.Settings settings = properties.settings(ProviderFactory.OLLAMA);
         this.enabled = settings.isAutoInstall();
-        this.baseUrl = ProviderStatusReporter.baseUrl(settings);
+        this.baseUrl = OllamaCatalog.baseUrl(settings);
         this.modelName = settings.getModel().strip();
     }
 

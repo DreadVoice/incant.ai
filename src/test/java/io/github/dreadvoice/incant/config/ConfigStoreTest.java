@@ -15,7 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import io.github.dreadvoice.incant.provider.ProviderProperties;
 
-class ApiKeyStoreTest {
+class ConfigStoreTest {
 
     @TempDir
     private Path home;
@@ -23,9 +23,8 @@ class ApiKeyStoreTest {
     @Test
     void writesTheKeyToTheConfigFileAndAppliesItImmediately() {
         ProviderProperties properties = properties();
-        ApiKeyStore store = store(properties);
 
-        store.update(Map.of("anthropic", "sk-ant-test"));
+        store(properties).updateApiKeys(Map.of("anthropic", "sk-ant-test"));
 
         assertThat(properties.settings("anthropic").getApiKey()).isEqualTo("sk-ant-test");
         assertThat(configFile()).content().contains("anthropic").contains("sk-ant-test");
@@ -40,7 +39,7 @@ class ApiKeyStoreTest {
                 """);
         ProviderProperties properties = properties();
 
-        store(properties).applyStoredKeys();
+        store(properties).applyStoredSettings();
 
         assertThat(properties.settings("openai").getApiKey()).isEqualTo("sk-stored");
     }
@@ -55,7 +54,7 @@ class ApiKeyStoreTest {
         ProviderProperties properties = properties();
         properties.settings("openai").setApiKey("sk-from-environment");
 
-        store(properties).applyStoredKeys();
+        store(properties).applyStoredSettings();
 
         assertThat(properties.settings("openai").getApiKey()).isEqualTo("sk-from-environment");
     }
@@ -63,10 +62,10 @@ class ApiKeyStoreTest {
     @Test
     void storesEachProviderSeparately() {
         ProviderProperties properties = properties();
-        ApiKeyStore store = store(properties);
+        ConfigStore store = store(properties);
 
-        store.update(Map.of("anthropic", "sk-ant"));
-        store.update(Map.of("openai", "sk-openai"));
+        store.updateApiKeys(Map.of("anthropic", "sk-ant"));
+        store.updateApiKeys(Map.of("openai", "sk-openai"));
 
         assertThat(properties.settings("anthropic").getApiKey()).isEqualTo("sk-ant");
         assertThat(properties.settings("openai").getApiKey()).isEqualTo("sk-openai");
@@ -76,10 +75,10 @@ class ApiKeyStoreTest {
     @Test
     void aBlankValueClearsTheStoredKey() {
         ProviderProperties properties = properties();
-        ApiKeyStore store = store(properties);
-        store.update(Map.of("anthropic", "sk-ant"));
+        ConfigStore store = store(properties);
+        store.updateApiKeys(Map.of("anthropic", "sk-ant"));
 
-        store.update(Map.of("anthropic", "  "));
+        store.updateApiKeys(Map.of("anthropic", "  "));
 
         assertThat(properties.settings("anthropic").hasApiKey()).isFalse();
         assertThat(configFile()).content().doesNotContain("sk-ant");
@@ -87,25 +86,68 @@ class ApiKeyStoreTest {
 
     @Test
     void rejectsAProviderThatTakesNoApiKey() {
-        ApiKeyStore store = store(properties());
+        ConfigStore store = store(properties());
 
-        assertThatThrownBy(() -> store.update(Map.of("ollama", "irrelevant")))
+        assertThatThrownBy(() -> store.updateApiKeys(Map.of("ollama", "irrelevant")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("does not take an api key");
     }
 
     @Test
     void theConfigFileIsReadableOnlyByItsOwner() throws IOException {
-        ApiKeyStore store = store(properties());
-
-        store.update(Map.of("anthropic", "sk-ant"));
+        store(properties()).updateApiKeys(Map.of("anthropic", "sk-ant"));
 
         assertThat(PosixFilePermissions.toString(Files.getPosixFilePermissions(configFile())))
                 .isEqualTo("rw-------");
     }
 
-    private ApiKeyStore store(ProviderProperties properties) {
-        return new ApiKeyStore(properties, configFile().toString());
+    @Test
+    void storesTheChosenLocalModel() {
+        ProviderProperties properties = properties();
+
+        store(properties).updateLocalModel("qwen2.5:0.5b");
+
+        assertThat(properties.settings("ollama").getModel()).isEqualTo("qwen2.5:0.5b");
+        assertThat(configFile()).content().contains("ollama").contains("qwen2.5:0.5b");
+    }
+
+    @Test
+    void readsTheStoredLocalModelOnStartup() throws IOException {
+        writeConfig("""
+                providers:
+                  ollama:
+                    model: llama3.2:1b
+                """);
+        ProviderProperties properties = properties();
+        properties.settings("ollama").setModel("incant-qwen");
+
+        store(properties).applyStoredSettings();
+
+        assertThat(properties.settings("ollama").getModel()).isEqualTo("llama3.2:1b");
+    }
+
+    @Test
+    void keepsTheApiKeyWhenTheLocalModelChanges() {
+        ProviderProperties properties = properties();
+        ConfigStore store = store(properties);
+        store.updateApiKeys(Map.of("openai", "sk-openai"));
+
+        store.updateLocalModel("qwen2.5:0.5b");
+
+        assertThat(configFile()).content().contains("sk-openai").contains("qwen2.5:0.5b");
+    }
+
+    @Test
+    void rejectsABlankLocalModel() {
+        ConfigStore store = store(properties());
+
+        assertThatThrownBy(() -> store.updateLocalModel("  "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must not be blank");
+    }
+
+    private ConfigStore store(ProviderProperties properties) {
+        return new ConfigStore(properties, configFile().toString());
     }
 
     private Path configFile() {

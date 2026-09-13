@@ -193,6 +193,8 @@ OPENAI_API_KEY=sk-or-...  INCANT_PROVIDER=openai   INCANT_OPENAI_BASE_URL=https:
 
 Every setting in `src/main/resources/application.properties` reads from an environment variable, including `INCANT_SKILLS_PATH`, `INCANT_ANTHROPIC_MODEL`, `OLLAMA_BASE_URL`, and `INCANT_OLLAMA_AUTO_INSTALL`.
 
+Keys can also be set from the UI. The settings screen writes them to `~/.incant/config.yml` (override with `INCANT_CONFIG_PATH`), a file only your user can read, and applies them without a restart. The same screen lists the models Ollama already has installed and switches the local model between them. An environment variable always wins over a stored value, so `ANTHROPIC_API_KEY=... ./gradlew bootRun` still overrides whatever the screen saved.
+
 ### Adding skills
 
 Drop skill folders into `./skills`, or point `INCANT_SKILLS_PATH` somewhere else. Each one needs a `SKILL.md` with `name` and `description` in the frontmatter, the standard format. Skills are loaded and classified at startup, and only the ones that can actually run on this machine are offered to the model. The repo ships one sample of each class in [`skills/`](./skills).
