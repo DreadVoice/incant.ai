@@ -50,14 +50,20 @@ public final class AgentOrchestrator {
     }
 
     public Result run(String systemPrompt, String userMessage) {
+        return run(systemPrompt, List.of(), userMessage);
+    }
+
+    public Result run(String systemPrompt, List<ChatMessage> history, String userMessage) {
         if (userMessage == null || userMessage.isBlank()) {
             throw new IllegalArgumentException("userMessage must not be blank");
         }
+        Objects.requireNonNull(history, "history");
 
         List<ChatMessage> messages = new ArrayList<>();
         if (systemPrompt != null && !systemPrompt.isBlank()) {
             messages.add(SystemMessage.from(systemPrompt));
         }
+        messages.addAll(history);
         messages.add(UserMessage.from(userMessage));
 
         long startedAt = System.currentTimeMillis();

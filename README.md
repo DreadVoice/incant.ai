@@ -114,11 +114,19 @@ curl -s -X POST localhost:8080/api/chat   -H "Content-Type: application/json"   
 ```
 
 ```json
-{"reply":"Hello, how are you today?","provider":"ollama","model":"incant-qwen",
+{"reply":"Hello, how are you today?","provider":"ollama","model":"incant-qwen","conversationId":1,
  "telemetry":{"iterations":1,"inputTokens":317,"outputTokens":8,"durationMillis":74}}
 ```
 
 The response always names the provider and model that actually served the request, so a fallback is never silent.
+
+**Continue a conversation.** Every reply carries a `conversationId`. Send it back and the turn is appended to that conversation, so the model is given everything said before it:
+
+```bash
+curl -s -X POST localhost:8080/api/chat   -H "Content-Type: application/json"   -d '{"message":"What did I just ask you?","conversationId":1}'
+```
+
+Conversations and their messages are stored in SQLite at `./data/incant.db`, so they outlive a restart. Leaving `conversationId` out starts a new conversation; an id that does not exist is rejected with HTTP 400.
 
 **Check that a skill was really used.** Name a skill in the message and watch `iterations` in the response. One iteration means the model answered on its own; two or more means it called `load_skill` and read the instructions first.
 
@@ -128,7 +136,7 @@ curl -s -X POST localhost:8080/api/chat   -H "Content-Type: application/json"   
 
 ```json
 {"reply":"The first editing step is to read the whole passage before changing anything.",
- "provider":"openai","model":"openai/gpt-4o-mini",
+ "provider":"openai","model":"openai/gpt-4o-mini","conversationId":2,
  "telemetry":{"iterations":2,"inputTokens":589,"outputTokens":31,"durationMillis":2983}}
 ```
 
