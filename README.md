@@ -93,7 +93,7 @@ java -jar build/libs/incant-0.0.1-SNAPSHOT.jar
 
 Then open <http://localhost:8080>. `bootJar` builds the frontend and packs it into the jar, so the UI is served from the same port as the API.
 
-`./gradlew bootRun` starts the API alone without the UI, which is what you want when you are working on the backend. If either command fails with `Permission denied`, the wrapper has lost its executable bit: run `chmod +x gradlew` once, or call `sh gradlew` instead.
+`./gradlew bootRun` starts the API alone without the UI, which is what you want when you are working on the backend. If you downloaded a zip instead of cloning, run `chmod +x gradlew` first, since zips do not carry the executable bit.
 
 To work on the frontend, run the Vite dev server next to the backend:
 
