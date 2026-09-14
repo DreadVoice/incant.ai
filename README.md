@@ -102,10 +102,11 @@ curl -s localhost:8080/api/providers
 {"defaultProvider":"anthropic","providers":[
   {"name":"anthropic","available":false,"model":"claude-opus-5","detail":"no api key configured"},
   {"name":"openai","available":false,"model":"gpt-4o-mini","detail":"no api key configured"},
+  {"name":"gemini","available":false,"model":"gemini-2.5-flash","detail":"no api key configured"},
   {"name":"ollama","available":true,"model":"incant-qwen","detail":"model installed"}]}
 ```
 
-`available` is the useful field. Anthropic and OpenAI need a key; Ollama needs a reachable server with the model installed.
+`available` is the useful field. Anthropic, OpenAI and Gemini need a key; Ollama needs a reachable server with the model installed.
 
 **Send a message:**
 
@@ -169,8 +170,8 @@ curl -s -X POST localhost:8080/api/chat -H "Content-Type: application/json"   -d
 
 ```bash
 # unknown provider, HTTP 400
-curl -s -X POST localhost:8080/api/chat -H "Content-Type: application/json"   -d '{"message":"hi","provider":"gemini"}'
-# {"error":"unknown provider 'gemini', supported: [openai, anthropic, ollama]"}
+curl -s -X POST localhost:8080/api/chat -H "Content-Type: application/json"   -d '{"message":"hi","provider":"mistral"}'
+# {"error":"unknown provider 'mistral', supported: [openai, anthropic, gemini, ollama]"}
 
 # blank message, HTTP 400
 curl -s -o /dev/null -w "%{http_code}
@@ -189,6 +190,8 @@ ANTHROPIC_API_KEY=sk-ant-...  ./gradlew bootRun
 OPENAI_API_KEY=sk-...  INCANT_PROVIDER=openai  ./gradlew bootRun
 
 OPENAI_API_KEY=sk-or-...  INCANT_PROVIDER=openai   INCANT_OPENAI_BASE_URL=https://openrouter.ai/api/v1   INCANT_OPENAI_MODEL=openai/gpt-4o-mini  ./gradlew bootRun
+
+GEMINI_API_KEY=...  INCANT_PROVIDER=gemini  ./gradlew bootRun
 ```
 
 Every setting in `src/main/resources/application.properties` reads from an environment variable, including `INCANT_SKILLS_PATH`, `INCANT_ANTHROPIC_MODEL`, `OLLAMA_BASE_URL`, and `INCANT_OLLAMA_AUTO_INSTALL`.

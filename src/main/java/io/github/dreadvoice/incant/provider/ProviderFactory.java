@@ -7,6 +7,8 @@ import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -16,10 +18,11 @@ public final class ProviderFactory {
 
     public static final String ANTHROPIC = "anthropic";
     public static final String OPENAI = "openai";
+    public static final String GEMINI = "gemini";
     public static final String OLLAMA = "ollama";
     public static final String DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
 
-    private static final Set<String> SUPPORTED = Set.of(ANTHROPIC, OPENAI, OLLAMA);
+    private static final Set<String> SUPPORTED = Set.of(ANTHROPIC, OPENAI, GEMINI, OLLAMA);
 
     private ProviderFactory() {
     }
@@ -43,6 +46,7 @@ public final class ProviderFactory {
         return switch (name) {
             case ANTHROPIC -> anthropic(require(apiKey, "apiKey"), model, baseUrl);
             case OPENAI -> openAi(require(apiKey, "apiKey"), model, baseUrl);
+            case GEMINI -> gemini(require(apiKey, "apiKey"), model, baseUrl);
             case OLLAMA -> ollama(model, baseUrl);
             default -> throw new IllegalArgumentException(
                     "unknown provider '" + provider + "', supported: " + SUPPORTED);
@@ -57,6 +61,7 @@ public final class ProviderFactory {
         return switch (name) {
             case ANTHROPIC -> streamingAnthropic(require(apiKey, "apiKey"), model, baseUrl);
             case OPENAI -> streamingOpenAi(require(apiKey, "apiKey"), model, baseUrl);
+            case GEMINI -> streamingGemini(require(apiKey, "apiKey"), model, baseUrl);
             case OLLAMA -> streamingOllama(model, baseUrl);
             default -> throw new IllegalArgumentException(
                     "unknown provider '" + provider + "', supported: " + SUPPORTED);
@@ -83,6 +88,17 @@ public final class ProviderFactory {
         return builder.build();
     }
 
+    private static StreamingChatModel streamingGemini(String apiKey, String modelName, String baseUrl) {
+        GoogleAiGeminiStreamingChatModel.GoogleAiGeminiStreamingChatModelBuilder builder =
+                GoogleAiGeminiStreamingChatModel.builder()
+                        .apiKey(apiKey)
+                        .modelName(modelName);
+        if (hasText(baseUrl)) {
+            builder.baseUrl(baseUrl.strip());
+        }
+        return builder.build();
+    }
+
     private static StreamingChatModel streamingOllama(String modelName, String baseUrl) {
         return OllamaStreamingChatModel.builder()
                 .baseUrl(hasText(baseUrl) ? baseUrl.strip() : DEFAULT_OLLAMA_BASE_URL)
@@ -102,6 +118,16 @@ public final class ProviderFactory {
 
     private static ChatModel openAi(String apiKey, String modelName, String baseUrl) {
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
+                .apiKey(apiKey)
+                .modelName(modelName);
+        if (hasText(baseUrl)) {
+            builder.baseUrl(baseUrl.strip());
+        }
+        return builder.build();
+    }
+
+    private static ChatModel gemini(String apiKey, String modelName, String baseUrl) {
+        GoogleAiGeminiChatModel.GoogleAiGeminiChatModelBuilder builder = GoogleAiGeminiChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName);
         if (hasText(baseUrl)) {

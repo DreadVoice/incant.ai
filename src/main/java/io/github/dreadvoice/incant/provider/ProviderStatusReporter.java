@@ -18,7 +18,8 @@ public class ProviderStatusReporter {
 
     public Report report() {
         List<ProviderStatus> providers = new ArrayList<>();
-        for (String provider : List.of(ProviderFactory.ANTHROPIC, ProviderFactory.OPENAI, ProviderFactory.OLLAMA)) {
+        for (String provider : List.of(ProviderFactory.ANTHROPIC, ProviderFactory.OPENAI, ProviderFactory.GEMINI,
+                ProviderFactory.OLLAMA)) {
             providers.add(ProviderFactory.OLLAMA.equals(provider) ? ollamaStatus() : keyedStatus(provider));
         }
         return new Report(properties.getProvider(), providers);
