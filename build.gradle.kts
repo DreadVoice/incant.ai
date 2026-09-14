@@ -190,6 +190,16 @@ val installerType = when {
 	else -> "deb"
 }
 
+val installerOptions = if (installerType == "deb") {
+	listOf(
+		"--linux-deb-maintainer", "akashchoudhary2005@gmail.com",
+		"--linux-menu-group", "Development",
+		"--linux-shortcut",
+	)
+} else {
+	emptyList()
+}
+
 tasks.register<Exec>("jpackageInstaller") {
 	group = "distribution"
 	description = "Builds a $installerType installer for the machine running the build."
@@ -220,6 +230,7 @@ tasks.register<Exec>("jpackageInstaller") {
 			"--runtime-image", runtime.get().asFile.absolutePath,
 			"--dest", output.absolutePath,
 		)
+		args(installerOptions)
 	}
 }
 
