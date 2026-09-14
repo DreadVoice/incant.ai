@@ -24,14 +24,16 @@ public class ChatModelResolver {
         Choice choice = choose(requestedProvider, requestedModel);
 
         return new Resolved(choice.provider(), choice.model(), ProviderFactory.create(
-                choice.provider(), choice.settings().getApiKey(), choice.model(), choice.settings().getBaseUrl()));
+                choice.provider(), choice.settings().getApiKey(), choice.model(), choice.settings().getBaseUrl(),
+                choice.settings().getRegion()));
     }
 
     public ResolvedStream resolveStreaming(String requestedProvider, String requestedModel) {
         Choice choice = choose(requestedProvider, requestedModel);
 
         return new ResolvedStream(choice.provider(), choice.model(), ProviderFactory.createStreaming(
-                choice.provider(), choice.settings().getApiKey(), choice.model(), choice.settings().getBaseUrl()));
+                choice.provider(), choice.settings().getApiKey(), choice.model(), choice.settings().getBaseUrl(),
+                choice.settings().getRegion()));
     }
 
     private Choice choose(String requestedProvider, String requestedModel) {

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
+import dev.langchain4j.model.bedrock.BedrockChatModel;
+import dev.langchain4j.model.bedrock.BedrockStreamingChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 
@@ -33,6 +35,31 @@ class ProviderFactoryTest {
         assertThatThrownBy(() -> ProviderFactory.create(ProviderFactory.GEMINI, "  ", "gemini-2.5-flash", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("apiKey");
+    }
+
+    @Test
+    void supportsBedrock() {
+        assertThat(ProviderFactory.supports("bedrock")).isTrue();
+        assertThat(ProviderFactory.supported()).contains(ProviderFactory.BEDROCK);
+    }
+
+    @Test
+    void buildsABedrockChatModel() {
+        assertThat(ProviderFactory.create(ProviderFactory.BEDROCK, "bd-key", "a.model-v1:0", null, "us-east-1"))
+                .isInstanceOf(BedrockChatModel.class);
+    }
+
+    @Test
+    void buildsAStreamingBedrockChatModel() {
+        assertThat(ProviderFactory.createStreaming(ProviderFactory.BEDROCK, "bd-key", "a.model-v1:0", null,
+                "us-east-1")).isInstanceOf(BedrockStreamingChatModel.class);
+    }
+
+    @Test
+    void bedrockStillNeedsAModelId() {
+        assertThatThrownBy(() -> ProviderFactory.create(ProviderFactory.BEDROCK, "bd-key", "  ", null, "us-east-1"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("modelName");
     }
 
     @Test

@@ -25,10 +25,8 @@ import jakarta.annotation.PostConstruct;
 @Component
 public class ConfigStore {
 
-    public static final String BEDROCK = "bedrock";
-
-    public static final List<String> KEYED_PROVIDERS =
-            List.of(ProviderFactory.ANTHROPIC, ProviderFactory.OPENAI, ProviderFactory.GEMINI, BEDROCK);
+    public static final List<String> KEYED_PROVIDERS = List.of(ProviderFactory.ANTHROPIC, ProviderFactory.OPENAI,
+            ProviderFactory.GEMINI, ProviderFactory.BEDROCK);
 
     private static final Logger log = LoggerFactory.getLogger(ConfigStore.class);
     private static final String PROVIDERS = "providers";

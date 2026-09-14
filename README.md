@@ -103,10 +103,11 @@ curl -s localhost:8080/api/providers
   {"name":"anthropic","available":false,"model":"claude-opus-5","detail":"no api key configured"},
   {"name":"openai","available":false,"model":"gpt-4o-mini","detail":"no api key configured"},
   {"name":"gemini","available":false,"model":"gemini-2.5-flash","detail":"no api key configured"},
+  {"name":"bedrock","available":false,"model":"","detail":"no api key configured"},
   {"name":"ollama","available":true,"model":"incant-qwen","detail":"model installed"}]}
 ```
 
-`available` is the useful field. Anthropic, OpenAI and Gemini need a key; Ollama needs a reachable server with the model installed.
+`available` is the useful field. Anthropic, OpenAI and Gemini need a key; Bedrock needs a key, a region and a model id; Ollama needs a reachable server with the model installed.
 
 **Send a message:**
 
@@ -171,7 +172,7 @@ curl -s -X POST localhost:8080/api/chat -H "Content-Type: application/json"   -d
 ```bash
 # unknown provider, HTTP 400
 curl -s -X POST localhost:8080/api/chat -H "Content-Type: application/json"   -d '{"message":"hi","provider":"mistral"}'
-# {"error":"unknown provider 'mistral', supported: [openai, anthropic, gemini, ollama]"}
+# {"error":"unknown provider 'mistral', supported: [gemini, anthropic, ollama, bedrock, openai]"}
 
 # blank message, HTTP 400
 curl -s -o /dev/null -w "%{http_code}
@@ -192,7 +193,11 @@ OPENAI_API_KEY=sk-...  INCANT_PROVIDER=openai  ./gradlew bootRun
 OPENAI_API_KEY=sk-or-...  INCANT_PROVIDER=openai   INCANT_OPENAI_BASE_URL=https://openrouter.ai/api/v1   INCANT_OPENAI_MODEL=openai/gpt-4o-mini  ./gradlew bootRun
 
 GEMINI_API_KEY=...  INCANT_PROVIDER=gemini  ./gradlew bootRun
+
+AWS_BEARER_TOKEN_BEDROCK=...  INCANT_PROVIDER=bedrock   AWS_REGION=us-east-1   INCANT_BEDROCK_MODEL=anthropic.claude-sonnet-4-v1:0  ./gradlew bootRun
 ```
+
+Bedrock ships no default model id, because ids differ by account and region: set `INCANT_BEDROCK_MODEL` (or the model field) or the provider stays unavailable. A stored Bedrock key is sent as a bearer token; leave it empty to fall back to the AWS credential chain.
 
 Every setting in `src/main/resources/application.properties` reads from an environment variable, including `INCANT_SKILLS_PATH`, `INCANT_ANTHROPIC_MODEL`, `OLLAMA_BASE_URL`, and `INCANT_OLLAMA_AUTO_INSTALL`.
 

@@ -41,6 +41,7 @@ public class ProviderProperties {
         private String apiKey = "";
         private String model = "";
         private String baseUrl = "";
+        private String region = "";
         private boolean autoInstall;
 
         public String getApiKey() {
@@ -65,6 +66,14 @@ public class ProviderProperties {
 
         public void setBaseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
+        }
+
+        public String getRegion() {
+            return region;
+        }
+
+        public void setRegion(String region) {
+            this.region = region;
         }
 
         public boolean isAutoInstall() {
