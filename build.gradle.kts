@@ -107,14 +107,61 @@ tasks.jar {
 	enabled = false
 }
 
+val runtimeModules = listOf(
+	"java.base",
+	"java.compiler",
+	"java.desktop",
+	"java.instrument",
+	"java.logging",
+	"java.management",
+	"java.naming",
+	"java.net.http",
+	"java.prefs",
+	"java.security.jgss",
+	"java.security.sasl",
+	"java.sql",
+	"java.transaction.xa",
+	"java.xml",
+	"jdk.crypto.cryptoki",
+	"jdk.crypto.ec",
+	"jdk.unsupported",
+	"jdk.zipfs",
+)
+
+val jlinkRuntime = tasks.register<Exec>("jlinkRuntime") {
+	group = "distribution"
+	description = "Builds a Java runtime holding only the modules Incant needs."
+
+	val launcher = javaToolchains.launcherFor(java.toolchain)
+	val destination = layout.buildDirectory.dir("jlink")
+
+	outputs.dir(destination)
+
+	doFirst {
+		val output = destination.get().asFile
+		output.deleteRecursively()
+
+		executable = launcher.get().metadata.installationPath.file("bin/jlink").asFile.absolutePath
+		args(
+			"--add-modules", runtimeModules.joinToString(","),
+			"--strip-debug",
+			"--no-header-files",
+			"--no-man-pages",
+			"--compress", "zip-6",
+			"--output", output.absolutePath,
+		)
+	}
+}
+
 val jpackageImage = tasks.register<Exec>("jpackageImage") {
 	group = "distribution"
 	description = "Builds a self-contained application image with a native launcher."
-	dependsOn(tasks.bootJar)
+	dependsOn(tasks.bootJar, jlinkRuntime)
 
 	val launcher = javaToolchains.launcherFor(java.toolchain)
 	val destination = layout.buildDirectory.dir("jpackage")
 	val input = layout.buildDirectory.dir("libs")
+	val runtime = layout.buildDirectory.dir("jlink")
 
 	inputs.file(tasks.bootJar.flatMap { it.archiveFile })
 	outputs.dir(destination)
@@ -131,6 +178,46 @@ val jpackageImage = tasks.register<Exec>("jpackageImage") {
 			"--app-version", project.version.toString(),
 			"--input", input.get().asFile.absolutePath,
 			"--main-jar", tasks.bootJar.get().archiveFileName.get(),
+			"--runtime-image", runtime.get().asFile.absolutePath,
+			"--dest", output.absolutePath,
+		)
+	}
+}
+
+val installerType = when {
+	org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "dmg"
+	org.gradle.internal.os.OperatingSystem.current().isWindows -> "msi"
+	else -> "deb"
+}
+
+tasks.register<Exec>("jpackageInstaller") {
+	group = "distribution"
+	description = "Builds a $installerType installer for the machine running the build."
+	dependsOn(tasks.bootJar, jlinkRuntime)
+
+	val launcher = javaToolchains.launcherFor(java.toolchain)
+	val destination = layout.buildDirectory.dir("installer")
+	val input = layout.buildDirectory.dir("libs")
+	val runtime = layout.buildDirectory.dir("jlink")
+
+	inputs.file(tasks.bootJar.flatMap { it.archiveFile })
+	outputs.dir(destination)
+
+	doFirst {
+		val output = destination.get().asFile
+		output.deleteRecursively()
+		output.mkdirs()
+
+		executable = launcher.get().metadata.installationPath.file("bin/jpackage").asFile.absolutePath
+		args(
+			"--type", installerType,
+			"--name", "Incant",
+			"--app-version", project.version.toString(),
+			"--vendor", "Incant",
+			"--description", "A local-first, provider-agnostic runtime for Claude Skills",
+			"--input", input.get().asFile.absolutePath,
+			"--main-jar", tasks.bootJar.get().archiveFileName.get(),
+			"--runtime-image", runtime.get().asFile.absolutePath,
 			"--dest", output.absolutePath,
 		)
 	}

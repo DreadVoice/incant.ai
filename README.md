@@ -108,10 +108,15 @@ It serves <http://localhost:5173> and proxies `/api` to port 8080, so the backen
 ### Packaging it
 
 ```bash
-./gradlew jpackageImage
+./gradlew jpackageImage      # a runnable app image
+./gradlew jpackageInstaller  # a native installer for this machine
 ```
 
-`jpackage` bundles the jar with a Java runtime and a native launcher, so the result runs on a machine with no JDK installed. It lands in `build/jpackage/Incant`, starts with `bin/Incant`, and is roughly 240MB because it carries a whole runtime. Installers (`.deb`, `.dmg`, `.msi`) are the same tool with a different `--type`, and are not wired up yet.
+`jlink` first builds a Java runtime holding only the modules Incant needs, which takes it from about 150MB to 57MB, and `jpackage` wraps that runtime, the jar and a native launcher together. The result runs on a machine with no JDK installed. The app image lands in `build/jpackage/Incant` and starts with `bin/Incant`; it is about 143MB, nearly all of it runtime and dependencies.
+
+`jpackageInstaller` builds whatever the host supports: `.deb` on Linux, `.dmg` on macOS, `.msi` on Windows. jpackage shells out to the platform's own packaging tools, so Linux needs `fakeroot` (`apt install fakeroot`), and Windows needs [WiX](https://wixtoolset.org/). Cross-building is not possible: each installer has to be built on the platform it targets.
+
+If you add a dependency that reaches for a part of the JDK the trimmed runtime left out, the app fails at startup with `NoClassDefFoundError`. The fix is to add the module to `runtimeModules` in `build.gradle.kts`.
 
 On first start Incant loads every skill in `./skills`, and, if Ollama is running, creates a small `incant-qwen` model from `src/main/resources/ollama/Modelfile` so there is always something to talk to. That download happens once and can take a few minutes. If Ollama is missing the step is skipped with a warning and the app still starts.
 
