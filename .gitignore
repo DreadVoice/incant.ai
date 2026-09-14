@@ -36,13 +36,6 @@ out/
 ### VS Code ###
 .vscode/
 
-### Local SQLite database ###
-data/*.db
-data/*.db-journal
-data/*.db-wal
-data/*.db-shm
-!data/.gitkeep
-
 ### Local-only skill fixtures for dev testing ###
 src/test/resources/skills/academy-guide/
 src/test/resources/skills/doc-coauthoring/
