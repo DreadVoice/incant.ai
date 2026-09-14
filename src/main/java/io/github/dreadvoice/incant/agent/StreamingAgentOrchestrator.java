@@ -87,6 +87,7 @@ public final class StreamingAgentOrchestrator {
                 messages.add(reply);
 
                 if (!reply.hasToolExecutionRequests()) {
+                    AgentOrchestrator.requireText(reply);
                     AgentOrchestrator.Telemetry telemetry = turn.telemetry(iteration);
                     log.info("streamed turn finished after {} iterations, {} tokens in {} ms",
                             telemetry.iterations(), telemetry.totalTokens(), telemetry.durationMillis());

@@ -170,6 +170,9 @@ public class ConfigStore {
     }
 
     private void restrictToOwner() {
+        if (!configPath.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+            return;
+        }
         try {
             Files.setPosixFilePermissions(configPath, PosixFilePermissions.fromString(OWNER_ONLY));
         } catch (IOException | UnsupportedOperationException e) {

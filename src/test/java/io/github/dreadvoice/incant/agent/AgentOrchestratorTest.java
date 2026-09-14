@@ -135,6 +135,15 @@ class AgentOrchestratorTest {
     }
 
     @Test
+    void rejectsEmptyReply() {
+        StubModel model = new StubModel(AiMessage.from(""));
+
+        assertThatThrownBy(() -> orchestrator(model).run("system prompt", "hello"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("empty reply");
+    }
+
+    @Test
     void rejectsMaxIterationsBelowOne() {
         assertThatThrownBy(() -> new AgentOrchestrator(new StubModel(), dispatcher(), SkillTools.all(), 0))
                 .isInstanceOf(IllegalArgumentException.class)

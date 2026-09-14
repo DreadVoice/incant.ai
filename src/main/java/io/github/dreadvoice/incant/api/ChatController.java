@@ -119,6 +119,13 @@ public class ChatController {
         return Map.of("error", e.getMessage());
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    public Map<String, String> handleUpstreamFailure(IllegalStateException e) {
+        log.warn("turn failed: {}", e.getMessage());
+        return Map.of("error", e.getMessage());
+    }
+
     public record ChatMessage(@NotBlank String message, Long conversationId, String provider, String model) {
     }
 

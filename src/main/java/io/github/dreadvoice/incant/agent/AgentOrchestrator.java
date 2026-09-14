@@ -24,6 +24,8 @@ public final class AgentOrchestrator {
 
     public static final int DEFAULT_MAX_ITERATIONS = 10;
 
+    static final String EMPTY_REPLY = "the model returned an empty reply";
+
     private static final Logger log = LoggerFactory.getLogger(AgentOrchestrator.class);
 
     private final ChatModel model;
@@ -80,6 +82,7 @@ public final class AgentOrchestrator {
             logTurn(iteration, response.tokenUsage(), reply.toolExecutionRequests().size());
 
             if (!reply.hasToolExecutionRequests()) {
+                requireText(reply);
                 Telemetry telemetry = telemetry(iteration, usage, startedAt);
                 log.info("turn finished after {} iterations, {} tokens in {} ms",
                         telemetry.iterations(), telemetry.totalTokens(), telemetry.durationMillis());
@@ -104,6 +107,12 @@ public final class AgentOrchestrator {
             builder.toolSpecifications(tools);
         }
         return builder.build();
+    }
+
+    static void requireText(AiMessage reply) {
+        if (reply.text() == null || reply.text().isBlank()) {
+            throw new IllegalStateException(EMPTY_REPLY);
+        }
     }
 
     private static void logTurn(int iteration, TokenUsage usage, int toolCalls) {
