@@ -1,6 +1,6 @@
 import type { ProviderReport } from '@/features/providers/types'
 
-import type { LocalModels } from './types'
+import type { KeyStatus, LocalModels } from './types'
 
 const API_KEYS_ENDPOINT = '/api/config/api-keys'
 const LOCAL_MODELS_ENDPOINT = '/api/config/local-models'
@@ -27,6 +27,16 @@ export async function updateApiKeys(apiKeys: Record<string, string>): Promise<Pr
   }
 
   return (await response.json()) as ProviderReport
+}
+
+export async function fetchApiKeyStatuses(): Promise<KeyStatus[]> {
+  const response = await fetch(API_KEYS_ENDPOINT)
+
+  if (!response.ok) {
+    throw new Error(`The server responded with status ${response.status}.`)
+  }
+
+  return (await response.json()) as KeyStatus[]
 }
 
 export async function fetchLocalModels(): Promise<LocalModels> {

@@ -42,8 +42,6 @@ function App() {
         <ChatPanel chat={chat} report={providers.report} status={providers.status} />
       ) : (
         <SettingsScreen
-          report={providers.report}
-          status={providers.status}
           onSaved={(saved) => {
             providers.setReport(saved)
             setChosenView('settings')

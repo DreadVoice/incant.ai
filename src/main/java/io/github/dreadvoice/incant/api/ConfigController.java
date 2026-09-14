@@ -39,6 +39,14 @@ public class ConfigController {
         this.properties = properties;
     }
 
+    @GetMapping(path = "/api-keys", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<KeyStatus> apiKeys() {
+        return ConfigStore.KEYED_PROVIDERS.stream()
+                .map(provider -> new KeyStatus(provider, properties.settings(provider).hasApiKey(),
+                        ProviderFactory.supports(provider)))
+                .toList();
+    }
+
     @PutMapping(path = "/api-keys", consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ProviderStatusReporter.Report updateApiKeys(@Valid @RequestBody ApiKeys request) {
@@ -82,5 +90,8 @@ public class ConfigController {
     }
 
     public record LocalModels(String baseUrl, boolean reachable, List<String> models, String selected) {
+    }
+
+    public record KeyStatus(String provider, boolean configured, boolean usable) {
     }
 }

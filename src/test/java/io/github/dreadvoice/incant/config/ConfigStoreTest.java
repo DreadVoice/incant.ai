@@ -85,6 +85,32 @@ class ConfigStoreTest {
     }
 
     @Test
+    void storesAKeyForAProviderThatCannotRunYet() {
+        ProviderProperties properties = properties();
+        ConfigStore store = store(properties);
+
+        store.updateApiKeys(Map.of("gemini", "gm-test", "bedrock", "bd-test"));
+
+        assertThat(properties.settings("gemini").getApiKey()).isEqualTo("gm-test");
+        assertThat(properties.settings("bedrock").getApiKey()).isEqualTo("bd-test");
+        assertThat(configFile()).content().contains("gm-test").contains("bd-test");
+    }
+
+    @Test
+    void readsAStoredGeminiKeyOnStartup() throws IOException {
+        writeConfig("""
+                providers:
+                  gemini:
+                    api-key: gm-stored
+                """);
+        ProviderProperties properties = properties();
+
+        store(properties).applyStoredSettings();
+
+        assertThat(properties.settings("gemini").getApiKey()).isEqualTo("gm-stored");
+    }
+
+    @Test
     void rejectsAProviderThatTakesNoApiKey() {
         ConfigStore store = store(properties());
 
@@ -163,6 +189,8 @@ class ConfigStoreTest {
         Map<String, ProviderProperties.Settings> providers = new LinkedHashMap<>();
         providers.put("anthropic", new ProviderProperties.Settings());
         providers.put("openai", new ProviderProperties.Settings());
+        providers.put("gemini", new ProviderProperties.Settings());
+        providers.put("bedrock", new ProviderProperties.Settings());
         providers.put("ollama", new ProviderProperties.Settings());
 
         ProviderProperties properties = new ProviderProperties();

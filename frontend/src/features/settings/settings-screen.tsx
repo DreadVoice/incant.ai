@@ -4,36 +4,30 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { ProviderReport } from '@/features/providers/types'
-import type { ProviderStatusState } from '@/features/providers/use-providers'
 
 import { updateApiKeys, updateLocalModel } from './api'
+import type { KeyStatus } from './types'
+import { useApiKeys } from './use-api-keys'
 import { useLocalModels } from './use-local-models'
 
-interface KeyField {
-  provider: string
-  label: string
-  supported: boolean
+const KEY_LABELS: Record<string, string> = {
+  anthropic: 'anthropic',
+  openai: 'openai',
+  gemini: 'gemini',
+  bedrock: 'aws bedrock',
 }
 
-const KEY_FIELDS: KeyField[] = [
-  { provider: 'anthropic', label: 'anthropic', supported: true },
-  { provider: 'openai', label: 'openai', supported: true },
-  { provider: 'gemini', label: 'gemini', supported: false },
-  { provider: 'bedrock', label: 'aws bedrock', supported: false },
-]
-
 interface SettingsScreenProps {
-  report: ProviderReport | null
-  status: ProviderStatusState
   onSaved: (report: ProviderReport) => void
 }
 
-export function SettingsScreen({ report, status, onSaved }: SettingsScreenProps) {
+export function SettingsScreen({ onSaved }: SettingsScreenProps) {
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [switching, setSwitching] = useState<string | null>(null)
+  const apiKeys = useApiKeys()
   const localModels = useLocalModels()
 
   const pending = Object.fromEntries(
@@ -41,12 +35,11 @@ export function SettingsScreen({ report, status, onSaved }: SettingsScreenProps)
   )
   const canSave = Object.keys(pending).length > 0 && !saving
 
-  function detailFor(provider: string): string {
-    return report?.providers.find((entry) => entry.name === provider)?.detail ?? 'status unknown'
-  }
-
-  function isConfigured(provider: string): boolean {
-    return report?.providers.find((entry) => entry.name === provider)?.available ?? false
+  function detailFor(key: KeyStatus): string {
+    if (!key.configured) {
+      return 'no api key configured'
+    }
+    return key.usable ? 'api key configured' : 'stored, not usable yet'
   }
 
   async function saveKeys() {
@@ -56,6 +49,7 @@ export function SettingsScreen({ report, status, onSaved }: SettingsScreenProps)
 
     try {
       onSaved(await updateApiKeys(pending))
+      await apiKeys.reload()
       setDrafts({})
       setSaved(true)
     } catch (cause) {
@@ -98,49 +92,46 @@ export function SettingsScreen({ report, status, onSaved }: SettingsScreenProps)
             </p>
           </div>
 
-          {status === 'failed' ? (
+          {apiKeys.state === 'failed' ? (
             <p role="alert" className="text-destructive text-sm">
-              The provider list could not be loaded, so key status is unavailable.
+              The stored keys could not be read, so nothing can be saved from here right now.
             </p>
           ) : null}
 
-          {KEY_FIELDS.map((field) => (
-            <div key={field.provider} className="flex flex-col gap-1.5">
-              <div className="flex items-baseline justify-between gap-2">
-                <label htmlFor={`${field.provider}-api-key`} className="text-sm font-medium">
-                  {field.label}
-                </label>
-                <span
-                  className={
-                    field.supported && isConfigured(field.provider)
-                      ? 'text-xs text-emerald-600'
-                      : 'text-muted-foreground text-xs'
+          {apiKeys.statuses.map((key) => {
+            const label = KEY_LABELS[key.provider] ?? key.provider
+
+            return (
+              <div key={key.provider} className="flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <label htmlFor={`${key.provider}-api-key`} className="text-sm font-medium">
+                    {label}
+                  </label>
+                  <span
+                    className={
+                      key.configured && key.usable
+                        ? 'text-xs text-emerald-600'
+                        : 'text-muted-foreground text-xs'
+                    }
+                  >
+                    {detailFor(key)}
+                  </span>
+                </div>
+                <Input
+                  id={`${key.provider}-api-key`}
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={drafts[key.provider] ?? ''}
+                  onChange={(event) =>
+                    setDrafts((current) => ({ ...current, [key.provider]: event.target.value }))
                   }
-                >
-                  {field.supported ? detailFor(field.provider) : 'not supported yet'}
-                </span>
+                  placeholder={key.configured ? 'Replace the stored key' : 'Paste a key'}
+                  aria-label={`${label} API key`}
+                />
               </div>
-              <Input
-                id={`${field.provider}-api-key`}
-                type="password"
-                autoComplete="off"
-                spellCheck={false}
-                disabled={!field.supported}
-                value={drafts[field.provider] ?? ''}
-                onChange={(event) =>
-                  setDrafts((current) => ({ ...current, [field.provider]: event.target.value }))
-                }
-                placeholder={
-                  field.supported
-                    ? isConfigured(field.provider)
-                      ? 'Replace the stored key'
-                      : 'Paste a key'
-                    : 'Coming later'
-                }
-                aria-label={`${field.label} API key`}
-              />
-            </div>
-          ))}
+            )
+          })}
 
           <div className="flex items-center gap-3">
             <Button type="button" onClick={() => void saveKeys()} disabled={!canSave}>

@@ -4,3 +4,9 @@ export interface LocalModels {
   models: string[]
   selected: string
 }
+
+export interface KeyStatus {
+  provider: string
+  configured: boolean
+  usable: boolean
+}
