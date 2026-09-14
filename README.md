@@ -105,6 +105,14 @@ npm run dev
 
 It serves <http://localhost:5173> and proxies `/api` to port 8080, so the backend must be running too.
 
+### Packaging it
+
+```bash
+./gradlew jpackageImage
+```
+
+`jpackage` bundles the jar with a Java runtime and a native launcher, so the result runs on a machine with no JDK installed. It lands in `build/jpackage/Incant`, starts with `bin/Incant`, and is roughly 240MB because it carries a whole runtime. Installers (`.deb`, `.dmg`, `.msi`) are the same tool with a different `--type`, and are not wired up yet.
+
 On first start Incant loads every skill in `./skills`, and, if Ollama is running, creates a small `incant-qwen` model from `src/main/resources/ollama/Modelfile` so there is always something to talk to. That download happens once and can take a few minutes. If Ollama is missing the step is skipped with a warning and the app still starts.
 
 ### What the UI gives you

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.github.dreadvoice"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0"
 
 java {
 	toolchain {
@@ -105,6 +105,35 @@ tasks.bootJar {
 
 tasks.jar {
 	enabled = false
+}
+
+val jpackageImage = tasks.register<Exec>("jpackageImage") {
+	group = "distribution"
+	description = "Builds a self-contained application image with a native launcher."
+	dependsOn(tasks.bootJar)
+
+	val launcher = javaToolchains.launcherFor(java.toolchain)
+	val destination = layout.buildDirectory.dir("jpackage")
+	val input = layout.buildDirectory.dir("libs")
+
+	inputs.file(tasks.bootJar.flatMap { it.archiveFile })
+	outputs.dir(destination)
+
+	doFirst {
+		val output = destination.get().asFile
+		output.deleteRecursively()
+		output.mkdirs()
+
+		executable = launcher.get().metadata.installationPath.file("bin/jpackage").asFile.absolutePath
+		args(
+			"--type", "app-image",
+			"--name", "Incant",
+			"--app-version", project.version.toString(),
+			"--input", input.get().asFile.absolutePath,
+			"--main-jar", tasks.bootJar.get().archiveFileName.get(),
+			"--dest", output.absolutePath,
+		)
+	}
 }
 
 tasks.withType<Test> {
