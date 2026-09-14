@@ -179,7 +179,7 @@ The response always names the provider and model that actually served the reques
 curl -s -X POST localhost:8080/api/chat   -H "Content-Type: application/json"   -d '{"message":"What did I just ask you?","conversationId":1}'
 ```
 
-Conversations and their messages are stored in SQLite at `~/.incant/incant.db` (override with `INCANT_DB_PATH`), so they outlive a restart. Leaving `conversationId` out starts a new conversation; an id that does not exist is rejected with HTTP 400.
+Conversations and their messages are stored in SQLite at `~/.incant/incant.db` (override with `INCANT_DB_PATH`), so they outlive a restart. A database left behind at the old `./data/incant.db` is moved there on the next start. Leaving `conversationId` out starts a new conversation; an id that does not exist is rejected with HTTP 400.
 
 **Stream the answer.** `POST /api/chat/stream` takes the same body and returns Server-Sent Events, so the reply arrives token by token instead of in one block:
 
