@@ -2,9 +2,9 @@
 
 **A local-first, provider-agnostic runtime for Claude Skills.**
 
-Run published skills on Claude, GPT, Gemini, or a local model. Nothing leaves your machine unless you send it there yourself.
+Run published skills on Claude, GPT, Gemini, Bedrock, or a local model. Nothing leaves your machine unless you send it there yourself.
 
-> **Status: early development.** The skill loader, the agent loop, and three providers work today. The UI, sandbox, and workspace mode do not. See [Project status](#project-status)
+> **Status: early development.** The chat UI, the skill loader, the agent loop, streaming, stored conversations and five providers work today. The sandbox and workspace mode do not. See [Project status](#project-status)
 
 ---
 
@@ -21,7 +21,7 @@ Incant is a runtime for them. Point it at a folder of skills, pick a model, and 
 - **No vendor lock-in.** The skill ecosystem is genuinely useful. It shouldn't be tied to one provider's client.
 - **Local by default.** Your conversations live in a SQLite file on your disk. Your API keys live in a config file you own. There is no server, no account, and no telemetry.
 - **Bring your own key.** Incant costs nothing to run and makes no money. You pay your provider directly, or run Ollama and pay nobody.
-- **Something to read.** Part of the point of this project is documenting how skills actually work across providers: what ports cleanly, what doesn't, and why. See [`COMPATIBILITY.md`](./COMPATIBILITY.md) once it exists.
+- **Something to read.** Part of the point of this project is documenting how skills actually work across providers: what ports cleanly, what doesn't, and why. See [`COMPATIBILITY.md`](./COMPATIBILITY.md).
 
 ## Not every skill ports cleanly
 
@@ -29,7 +29,7 @@ This turned out to be the most interesting problem in the project, so it's worth
 
 | Class | Needs | Examples | Incant support |
 |---|---|---|---|
-| **Instruction** | Just context | Writing style, code review heuristics, domain methodology | ✅ Planned for v1.0 |
+| **Instruction** | Just context | Writing style, code review heuristics, domain methodology | ✅ Works today |
 | **Document** | Sandbox with Python, file I/O | `docx`, `pdf`, `xlsx` generation | 🔜 Planned for v3.0 |
 | **Coding-agent** | A full agent harness with repo, git, subagents, file editing | Superpowers and similar | 🔜 Planned for v2.0 |
 
@@ -41,7 +41,7 @@ Incant classifies each skill on load and tells you which class it's in, includin
 
 ```
 ┌─────────────────────────────────────────────┐
-│  React SPA - chat, workspace, skill panel   │
+│  React SPA - chat, skills, settings         │
 └──────────────────┬──────────────────────────┘
                    │ REST + SSE (localhost)
 ┌──────────────────▼──────────────────────────┐
@@ -50,10 +50,12 @@ Incant classifies each skill on load and tells you which class it's in, includin
 │  Skills      │  Tools       │  Providers    │
 │  loader      │  dispatcher  │  LangChain4j  │
 │  classifier  │  load_skill  │  Anthropic    │
-│  registry    │  bash, files │  OpenAI       │
-│              │  git, edit   │  Ollama       │
+│  registry    │              │  OpenAI       │
+│              │              │  Gemini       │
+│              │              │  Bedrock      │
+│              │              │  Ollama       │
 ├──────────────┴──────────────┴───────────────┤
-│  ExecutionBackend                           │
+│  ExecutionBackend - not built yet           │
 │  · LocalWorkspace  - your repo, your machine│
 │  · Docker          - sandboxed, no egress   │
 │  · Docker + gVisor - syscall-filtered       │
@@ -68,29 +70,64 @@ Everything else (sandboxing, workspace access, subagents) is infrastructure hang
 
 ## Two modes
 
-**Chat mode** is a normal conversation. Instruction skills load into context; document skills run their scripts in a locked-down container with no network access.
+**Chat mode** is a normal conversation, and it is the mode that exists today. Instruction skills load into context. Document skills are recognised and then held back, because the container that would run their scripts is not built yet.
 
-**Workspace mode** points Incant at a directory on your machine. It gets file editing, bash, and git tools, and coding-agent skills become available. There's no sandbox here; the trust model is the same as any coding agent you'd install: you chose the directory, you chose the skills, and you can watch every command in the activity log. That's a deliberate choice, not an oversight. See [Security](#security).
+**Workspace mode** is not built yet. The plan: point Incant at a directory on your machine. It gets file editing, bash, and git tools, and coding-agent skills become available. There's no sandbox here; the trust model is the same as any coding agent you'd install: you chose the directory, you chose the skills, and you can watch every command in the activity log. That's a deliberate choice, not an oversight. See [Security](#security).
 
 ---
 
 ## Getting started
 
-There is no packaged release yet. What runs today is a Spring Boot service with three JSON endpoints, and you drive it from the terminal.
+There is no packaged release yet, so you build it yourself. What runs today is a Spring Boot service that also serves the chat UI.
 
-**Requirements:** JDK 21+. [Ollama](https://ollama.com) if you want a local model to fall back on. Docker only when document skills land.
+**Requirements:** JDK 21+ and Node.js 22+ (the UI is built by the Gradle build). [Ollama](https://ollama.com) if you want a local model to fall back on. Docker only when document skills land.
 
 ### Run it
 
 ```bash
 git clone https://github.com/DreadVoice/incant.ai.git
 cd incant.ai
-./gradlew bootRun
+./gradlew bootJar
+java -jar build/libs/incant-0.0.1-SNAPSHOT.jar
 ```
+
+Then open <http://localhost:8080>. `bootJar` builds the frontend and packs it into the jar, so the UI is served from the same port as the API.
+
+`./gradlew bootRun` starts the API alone without the UI, which is what you want when you are working on the backend. If either command fails with `Permission denied`, the wrapper has lost its executable bit: run `chmod +x gradlew` once, or call `sh gradlew` instead.
+
+To work on the frontend, run the Vite dev server next to the backend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+It serves <http://localhost:5173> and proxies `/api` to port 8080, so the backend must be running too.
 
 On first start Incant loads every skill in `./skills`, and, if Ollama is running, creates a small `incant-qwen` model from `src/main/resources/ollama/Modelfile` so there is always something to talk to. That download happens once and can take a few minutes. If Ollama is missing the step is skipped with a warning and the app still starts.
 
+### What the UI gives you
+
+The chat screen streams each answer as it arrives, and names the provider and model that served it. A collapsible sidebar lists your saved conversations and holds the settings screen; a panel on the right shows which skills each answer loaded. The composer has a provider and model picker, and settings holds the API keys and the list of models Ollama already has installed.
+
+On first run, when no provider has a key, Incant opens settings instead of the chat so there is something to do.
+
 ### Testing it from the terminal
+
+Everything the UI does is a plain HTTP call:
+
+| Endpoint | What it does |
+| --- | --- |
+| `GET /api/providers` | Which providers are configured and usable |
+| `POST /api/chat` | One turn, answered in a single JSON response |
+| `POST /api/chat/stream` | The same turn, streamed as Server-Sent Events |
+| `GET /api/conversations` | Stored conversations, most recently used first |
+| `GET /api/conversations/{id}` | One conversation with its messages |
+| `GET /api/config/api-keys` | Which keys are stored, and whether that provider can run |
+| `PUT /api/config/api-keys` | Store or clear a key |
+| `GET /api/config/local-models` | Models installed in Ollama |
+| `PUT /api/config/local-model` | Switch the local model |
 
 **What is configured right now:**
 
@@ -213,17 +250,25 @@ Drop skill folders into `./skills`, or point `INCANT_SKILLS_PATH` somewhere else
 ./gradlew test
 ```
 
-No network and no API key required. The suite covers frontmatter parsing, skill classification against real published skills, and the agent loop against a stubbed model.
+No network and no API key required. The suite covers frontmatter parsing, skill classification against real published skills, the agent loop against a stubbed model, conversation storage, the config file, and provider construction. Frontend checks are separate:
+
+```bash
+cd frontend
+npm run build
+npm run lint
+```
 
 ---
 
 ## Security
 
-**What's protected:** document skills run in a container with no network egress, capped memory and CPU, and a read-only root filesystem. On Linux with gVisor installed, they additionally run under a userspace kernel that filters syscalls before they reach the host. Incant detects this at startup and uses it when available.
+**What's protected today:** nothing needs protecting yet, because nothing executes. Only instruction skills are offered to the model, and an instruction skill is text that goes into the prompt. Document skills are classified on load and then withheld, so no skill-supplied script runs anywhere.
 
-**What isn't:** *NOT IMPLEMENTED YET* workspace mode runs on your machine with your permissions. Coding-agent skills need real repo access to be useful. Incant shows you every command before and after it runs, but it does not sandbox them. Treat installing a skill the way you'd treat installing any dependency: know where it came from.
+**The plan for v3.0:** document skills run in a container with no network egress, capped memory and CPU, and a read-only root filesystem. On Linux with gVisor installed, they would additionally run under a userspace kernel that filters syscalls before they reach the host.
 
-**On API keys:** they're stored in `~/.incant/config.yml` in plaintext, protected by nothing but your filesystem permissions. This is the same posture as most local dev tools. If that's not acceptable for your keys, use scoped or throwaway ones.
+**What won't be protected:** workspace mode, when it lands, runs on your machine with your permissions. Coding-agent skills need real repo access to be useful. Incant shows you every command before and after it runs, but it does not sandbox them. Treat installing a skill the way you'd treat installing any dependency: know where it came from.
+
+**On API keys:** they're stored in `~/.incant/config.yml` in plaintext, written so only your user can read the file, and protected by nothing else. This is the same posture as most local dev tools. If that's not acceptable for your keys, use scoped or throwaway ones.
 
 Incant makes no network calls except to the provider you configured. There is no telemetry, no update check, and no analytics.
 
@@ -236,8 +281,8 @@ Incant makes no network calls except to the provider you configured. There is no
 | `v0.1` | Skills parsed and classified | ✅ Done |
 | `v0.2` | Agent loop, one provider | ✅ Done |
 | `v0.3` | Multi-provider | ✅ Done |
-| `v1.0` | Chat UI, runnable JAR | 🟡 In progress |
-| `v2.0` | Workspace mode, coding-agent skills | 🔴 Not started |
+| `v1.0` | Chat UI, runnable JAR | ✅ Done |
+| `v2.0` | Workspace mode, coding-agent skills | 🟡 In progress |
 | `v3.0` | Docker sandbox, document skills | 🔴 Not started |
 
 ## Caveats
@@ -245,7 +290,7 @@ Incant makes no network calls except to the provider you configured. There is no
 - **This is a learning project**, built by a final-year CS student. It's designed to be read as much as used. Expect the code to prioritize clarity over cleverness.
 - **The skill format isn't a standard.** It's a convention Anthropic uses, and it could change. Incant tracks it; it doesn't control it.
 - **Small local models are unreliable at tool calling.** Ollama support is real, but a 7B model will sometimes fail to invoke skills correctly. That's a model limitation, not a bug; findings get documented rather than papered over.
-- **Some skills assume Claude-specific paths and preinstalled packages.** Incant mounts volumes where skills expect them and ships a base image with common libraries, but a skill can still fail because it needed something nobody declared. Failure should at least be legible when it happens.
+- **Some skills assume Claude-specific paths and preinstalled packages.** The plan is to mount volumes where skills expect them and ship a base image with common libraries, but a skill will still be able to fail because it needed something nobody declared. Failure should at least be legible when it happens.
 - **Not affiliated with Anthropic.** "Claude" and "Claude Skills" are theirs. This is an independent, unaffiliated project that reads a public file format.
 
 ## Contributing
