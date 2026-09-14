@@ -88,7 +88,7 @@ There is no packaged release yet, so you build it yourself. What runs today is a
 git clone https://github.com/DreadVoice/incant.ai.git
 cd incant.ai
 ./gradlew bootJar
-java -jar build/libs/incant-0.0.1-SNAPSHOT.jar
+java -jar build/libs/incant.jar
 ```
 
 Then open <http://localhost:8080>. `bootJar` builds the frontend and packs it into the jar, so the UI is served from the same port as the API.
@@ -127,6 +127,7 @@ Everything the UI does is a plain HTTP call:
 | `GET /api/config/api-keys` | Which keys are stored, and whether that provider can run |
 | `PUT /api/config/api-keys` | Store or clear a key |
 | `GET /api/config/local-models` | Models installed in Ollama |
+| `GET /api/version` | The build this jar was made from |
 | `PUT /api/config/local-model` | Switch the local model |
 
 **What is configured right now:**

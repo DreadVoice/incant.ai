@@ -13,6 +13,10 @@ java {
 	}
 }
 
+springBoot {
+	buildInfo()
+}
+
 repositories {
 	mavenCentral()
 }
@@ -87,9 +91,20 @@ val bundleFrontend = tasks.register<Sync>("bundleFrontend") {
 }
 
 tasks.bootJar {
+	archiveFileName.set("incant.jar")
+	manifest {
+		attributes(
+			"Implementation-Title" to "Incant",
+			"Implementation-Version" to project.version.toString(),
+		)
+	}
 	from(bundleFrontend) {
 		into("BOOT-INF/classes/static")
 	}
+}
+
+tasks.jar {
+	enabled = false
 }
 
 tasks.withType<Test> {
